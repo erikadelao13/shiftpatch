@@ -8,7 +8,7 @@ The procedures are plain Markdown and readable by any agent or person. Tools tha
 | --- | --- | --- |
 | `harness-maintenance` | Instructions, doc maps, commands, or plan statuses have drifted from reality — or an audit of the harness is requested. Not for ordinary code edits. | [harness-maintenance/SKILL.md](harness-maintenance/SKILL.md) |
 | `verification-handoff` | A change needs validating, finishing, or handing off with evidence; or verification gaps need reporting. | [verification-handoff/SKILL.md](verification-handoff/SKILL.md) |
-| `contextual-commits` | Pending work needs organizing into coherent, verified commits. | [contextual-commits/SKILL.md](contextual-commits/SKILL.md) |
+| `contextual-commits` | Pending work needs organizing into coherent, verified Conventional Commits grouped by context — including splitting one file across commits. | [contextual-commits/SKILL.md](contextual-commits/SKILL.md) |
 
 ## Tool discovery
 
