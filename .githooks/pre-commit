@@ -1,0 +1,25 @@
+#!/bin/sh
+# Fast checks from docs/VERIFICATION.md. Inspects the working tree, not the
+# staged snapshot. Bypass with `git commit --no-verify` and say so in handoff.
+set -eu
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Use the Node pinned in .nvmrc when nvm has it; the shell default may be
+# older than Next.js requires (TD-7). Otherwise PATH is left alone.
+if node_bin=$(python3 scripts/pinned_node.py); then
+  PATH="$node_bin:$PATH"
+  export PATH
+fi
+
+pnpm check:docs
+pnpm lint
+
+# `tsc --noEmit` needs the route types Next.js generates into .next/types.
+# On a tree that has never been built there is nothing to check against, so
+# skip rather than fail; pre-push runs `pnpm verify`, which builds first.
+if [ -d .next/types ]; then
+  pnpm typecheck
+else
+  echo "pre-commit: skipping typecheck (.next/types missing; run pnpm build)."
+fi

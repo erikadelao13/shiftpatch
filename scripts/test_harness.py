@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 import check_harness
+import pinned_node
 
 
 class HarnessTests(unittest.TestCase):
@@ -75,6 +76,43 @@ class HarnessTests(unittest.TestCase):
         self.config["forbidden"] = ["../CLAUDE.md"]
         self.save_config()
         self.assertTrue(check_harness.check(self.root))
+
+
+class PinnedNodeTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="pinned-node-fixture-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.env = {"NVM_DIR": str(self.root / "nvm")}
+        self.bins = {version: self.install(version) for version in ("18.17.1", "24.9.0", "24.16.0")}
+
+    def install(self, version):
+        node = self.root / "nvm/versions/node" / ("v" + version) / "bin/node"
+        node.parent.mkdir(parents=True)
+        node.touch()
+        node.chmod(0o755)
+        return node.parent
+
+    def pin(self, text):
+        (self.root / ".nvmrc").write_text(text, encoding="utf-8")
+        return pinned_node.pinned_node_bin(self.root, self.env)
+
+    def test_exact_and_prefix_pins_resolve_to_installed_bin(self):
+        self.assertEqual(self.pin("24.16.0\n"), self.bins["24.16.0"])
+        self.assertEqual(self.pin("v24.16.0"), self.bins["24.16.0"])
+        self.assertEqual(self.pin("24"), self.bins["24.16.0"])  # numeric, not lexical, order
+        self.assertEqual(self.pin("24.9"), self.bins["24.9.0"])
+
+    def test_non_executable_node_falls_back_to_next_match(self):
+        (self.bins["24.16.0"] / "node").chmod(0o644)
+        self.assertEqual(self.pin("24"), self.bins["24.9.0"])
+
+    def test_missing_unsupported_or_uninstalled_pins_return_none(self):
+        self.assertIsNone(pinned_node.pinned_node_bin(self.root, self.env))  # no .nvmrc
+        for text in ("lts/*", "node", "", "22.0.0", "2", "24.1"):
+            self.assertIsNone(self.pin(text), text)
+        self.pin("24.16.0")
+        self.assertIsNone(pinned_node.pinned_node_bin(self.root, {"NVM_DIR": str(self.root / "absent")}))
 
 
 if __name__ == "__main__":
