@@ -1,6 +1,6 @@
 # Authentication
 
-Status: Active
+Status: Complete
 Owner: Erika De LA O (decisions) / agent (implementation)
 Created: 2026-10-16
 
@@ -306,6 +306,12 @@ Route table from the build: `/` and `/admin`, `/agency`, `/nurse` partial preren
 
 ## Handoff or outcome
 
-Nothing is committed. The work is complete against the acceptance criteria above, and all of them are ticked. The owner decides how to commit.
+Complete 2026-10-17. All seven acceptance criteria pass, with the evidence above. The work is committed and merged on `main` (`1992efb` to `c977019`), and the code follows the `AGENTS.md` comment guidelines.
 
-Next concrete action: the owner reviews the agent deviations and the "Agent proposals" above, then commits. Afterward, the next plan is shifts (`GET/POST /api/shifts`, claim, cancel, agency-scoped list), which can reuse `requireActor` and the actor's `agencyId`. It should resolve the `cancelled` status question first (see `docs/decisions.md`, Open items). Before moving this plan to `completed/`, the owner should also confirm the `dev` branch TTL.
+Known gaps, recorded in [../tech-debt-tracker.md](../tech-debt-tracker.md):
+
+- No production-mode run (`pnpm start`), so the `Secure` cookie flag is untested; no measured color contrast, no screen reader testing, Chromium only (TD-14).
+- No CI (TD-2); the throttle is per email only (TD-13); auth rows are never pruned (TD-12).
+- Whether the Neon `dev` branch has the default 7-day TTL is unconfirmed. It is listed under Open items in [../../decisions.md](../../decisions.md).
+
+Next plan: shifts (`GET/POST /api/shifts`, claim, cancel, the agency-scoped list). It can reuse `requireActor` and the actor's `agencyId`, and it should first resolve the `cancelled` status question (see `docs/decisions.md`, Open items).
