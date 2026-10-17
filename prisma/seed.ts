@@ -6,12 +6,10 @@ import { hashPassword } from "../src/features/auth/server/password";
 import { assertDevBranch } from "./branch-guard";
 import { FIXTURE_PASSWORD, fixtureAgencies, fixtureUsers } from "./fixtures";
 
-// Development files over `.env`, which holds the production branch.
+// `.env` holds production; load the development files over it.
 loadEnvConfig(process.cwd(), true);
 
 async function main() {
-  // Before any connection is opened. The deployment plan adds an explicit
-  // override for seeding production.
   assertDevBranch("seed the database");
 
   const connectionString = process.env.DATABASE_URL_UNPOOLED;

@@ -1,6 +1,5 @@
 export const SESSION_COOKIE = "shiftpatch_session";
 
-// Token and cookie lifetime. One constant, so they can't drift apart.
 export const SESSION_TTL_SECONDS = 8 * 60 * 60;
 
 export const TOKEN_ISSUER = "shiftpatch";

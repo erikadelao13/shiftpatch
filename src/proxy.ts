@@ -4,10 +4,8 @@ import { SESSION_COOKIE } from "@/features/auth/constants";
 import { verifyToken } from "@/features/auth/server/token";
 import { WORKSPACE_PATHS, workspacePathFor } from "@/features/auth/workspace";
 
-// Optimistic redirects only: the cookie's signature and expiry, never the
-// database. Each page still does the authoritative check (getCurrentUser).
-// `/login` is deliberately not handled, so a revoked session that still carries
-// a valid signature can't cause a redirect loop.
+// Optimistic redirects from the cookie signature only. `/login` is deliberately
+// not handled: a revoked session with a valid signature would loop.
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(SESSION_COOKIE)?.value;

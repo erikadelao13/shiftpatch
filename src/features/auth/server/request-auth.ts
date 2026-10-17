@@ -29,7 +29,6 @@ function readCookie(header: string | null, name: string): string | undefined {
   return undefined;
 }
 
-// A cookie-authenticated unsafe request must come from our own origin.
 function assertSameOrigin(request: Request): void {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host") ?? new URL(request.url).host;
@@ -44,11 +43,7 @@ function assertSameOrigin(request: Request): void {
   }
 }
 
-// The one guard every authenticated route calls.
-//  - An Authorization header must hold a valid Bearer token. An invalid one is
-//    a 401 and never falls back to the cookie.
-//  - Otherwise the session cookie is used, with an Origin check on unsafe methods.
-//  - With neither, 401.
+// An invalid Authorization header is a 401 and never falls back to the cookie.
 export async function requireSession(
   request: Request,
 ): Promise<AuthenticatedRequest> {

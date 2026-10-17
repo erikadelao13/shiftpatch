@@ -40,9 +40,7 @@ export function newSessionExpiry(now = new Date()): Date {
   return new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
 }
 
-// Checks signature, algorithm, issuer, audience and expiry only. It does not
-// know whether the session was revoked; `resolveSession` does.
-// Returns null for any invalid token.
+// Does not know whether the session was revoked; `resolveSession` does.
 export async function verifyToken(token: string): Promise<TokenClaims | null> {
   try {
     const { payload } = await jwtVerify(token, signingKey(), {

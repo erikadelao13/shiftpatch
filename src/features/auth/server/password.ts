@@ -13,7 +13,6 @@ function derive(password: string, salt: Buffer): Promise<Buffer> {
   });
 }
 
-// Stored as `scrypt1$<salt hex>$<key hex>`; a random salt per hash.
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(SALT_BYTES);
   const key = await derive(password, salt);
@@ -36,8 +35,8 @@ export async function verifyPassword(
 
 let dummyHash: Promise<string> | undefined;
 
-// Burns the same scrypt time as a real check, so an unknown email can't be
-// told apart from a wrong password by response time.
+// Same scrypt cost as a real check, so response time doesn't reveal whether an
+// email exists.
 export async function verifyAgainstDummy(password: string): Promise<void> {
   dummyHash ??= hashPassword("shiftpatch-dummy-password");
   await verifyPassword(password, await dummyHash);

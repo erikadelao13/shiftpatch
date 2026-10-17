@@ -38,7 +38,6 @@ export function getDb(): Pool {
   return globalForDb.dbPool;
 }
 
-// The Prisma client runs on the same pool, so the app opens one connection set.
 export function getPrisma(): PrismaClient {
   globalForDb.prismaClient ??= new PrismaClient({
     adapter: new PrismaPg(getDb()),

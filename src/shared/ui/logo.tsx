@@ -3,8 +3,7 @@ type LogoProps = {
   className?: string;
 };
 
-// Abstract woven patch mark beside the serif wordmark. The mark is decorative:
-// the visible wordmark names the product.
+// The mark is decorative: the visible wordmark names the product.
 export function Logo({ tone, className = "" }: LogoProps) {
   const onBrand = tone === "on-brand";
   return (

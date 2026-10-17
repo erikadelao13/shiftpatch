@@ -17,8 +17,7 @@ export type SignInState = {
   error?: string;
 };
 
-// The browser signs in here rather than through POST /api/auth/login, so the
-// token goes straight into an HttpOnly cookie and never reaches client JS.
+// The token goes straight into an HttpOnly cookie and never reaches client JS.
 export async function signIn(
   _previous: SignInState,
   formData: FormData,

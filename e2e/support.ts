@@ -17,8 +17,7 @@ export const accounts = [
   { email: "alex.kim@example.com", id: "admin-1", name: "Alex Kim", role: "admin" },
 ] as const;
 
-// The session id lives in the token's `sid` claim. Reading it here is only for
-// cleanup; nothing trusts it.
+// Only for cleanup; nothing trusts it.
 export function sessionIdOf(token: string): string | undefined {
   try {
     const payload = JSON.parse(
@@ -30,8 +29,6 @@ export function sessionIdOf(token: string): string | undefined {
   }
 }
 
-// Deletes only the rows a spec created: its own sessions and its throwaway
-// failed-login emails. Never truncates or resets anything.
 export async function deleteOwnRows(rows: {
   sessionIds?: string[];
   emails?: string[];

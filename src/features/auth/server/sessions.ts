@@ -16,9 +16,7 @@ export async function createSession(
   return { sessionId: session.id, expiresAt };
 }
 
-// The authoritative check behind a verified token: the session must exist,
-// belong to the token's subject, and be neither revoked nor expired. The actor
-// comes from the database, not from the token.
+// The actor comes from the database, not from the token.
 export async function resolveSession(
   claims: TokenClaims,
 ): Promise<Actor | null> {

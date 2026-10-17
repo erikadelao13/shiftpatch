@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-// Emails are matched case-insensitively. An unknown or malformed address gets
-// the same 401 as a wrong password, so only missing fields are a 400.
+// Unknown or malformed emails get the same 401 as a wrong password, so only
+// missing fields are a 400.
 export const loginSchema = z.object({
   email: z
     .string({ error: "Email and password are required" })

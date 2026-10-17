@@ -3,8 +3,7 @@ import { defineConfig } from "prisma/config";
 
 import { assertDevBranch, devOnlyPrismaCommand } from "./prisma/branch-guard";
 
-// `.env` holds the production branch, so the Prisma CLI opts into
-// `.env.development` (dev branch) unless the caller sets NODE_ENV=production.
+// `.env` is production: opt into `.env.development` unless NODE_ENV=production.
 const production = process.env.NODE_ENV === "production";
 loadEnvConfig(process.cwd(), !production);
 
@@ -26,8 +25,8 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    // Migrations use the direct connection. Read it without `env()`, which
-    // throws when unset, so `prisma generate` works with no database.
+    // Read without `env()`, which throws when unset, so `prisma generate` works
+    // with no database.
     url: process.env.DATABASE_URL_UNPOOLED,
   },
 });

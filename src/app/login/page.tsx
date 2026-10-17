@@ -13,10 +13,8 @@ export const metadata: Metadata = {
   title: "Sign in · ShiftPatch",
 };
 
-// A signed-in visitor is sent to their workspace. The check is against the
-// database, not just the cookie's signature, so a revoked session stays here
-// and can't loop. It streams in behind <Suspense>, which keeps the page itself
-// static.
+// Checks the database, not just the cookie signature, so a revoked session
+// stays on the form instead of looping.
 async function RedirectIfSignedIn() {
   const user = await getOptionalUser();
   if (user) redirect(workspacePathFor(user.role));
@@ -44,8 +42,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Static brand decoration: an evening shift card and a credential
-            card joined by a fine gold line. It shows no real staffing data. */}
+        {/* Decorative only: must not read as live staffing data. */}
         <div
           aria-hidden="true"
           className="hidden flex-col items-start gap-0 lg:flex"

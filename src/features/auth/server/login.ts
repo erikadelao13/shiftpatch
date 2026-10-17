@@ -20,7 +20,6 @@ export type LoginResult = {
   user: PublicUser;
 };
 
-// Shared by the API route and the browser Server Action.
 export async function authenticate({
   email,
   password,
@@ -45,7 +44,6 @@ export async function authenticate({
   if (user) {
     verified = await verifyPassword(password, user.passwordHash);
   } else {
-    // Same cost as a real check, so response time doesn't reveal the account.
     await verifyAgainstDummy(password);
   }
 

@@ -6,8 +6,7 @@ import {
   workspacePathFor,
 } from "@/features/auth/server/current-user";
 
-// The proxy normally redirects `/` first. This is the authoritative fallback:
-// a signed-in user goes to their workspace, anyone else to /login.
+// The proxy normally redirects `/` first; this is the authoritative fallback.
 export default function Home() {
   return (
     <Suspense fallback={null}>

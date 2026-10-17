@@ -150,7 +150,6 @@ test("sign-out revokes the session; back lands on /login", async ({ page, reques
   await page.goBack();
   await expect(page).toHaveURL(/\/login$/);
 
-  // The old token is dead on the server, not just forgotten by the browser.
   const response = await request.get("/api/auth/me", {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -174,8 +173,6 @@ test("a revoked session that still has a valid signature does not loop", async (
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId("login-submit-button")).toBeVisible();
 
-  // Visiting /login directly with the dead cookie must show the form, not
-  // bounce back to the workspace.
   await page.goto("/login");
   await expect(page.getByTestId("login-submit-button")).toBeVisible();
   await page.waitForTimeout(500);

@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-/* Tokens from docs/DESIGN.md §3 and §5. Tailwind exposes each as a CSS
-   variable and as a utility (bg-brand-800, text-text-muted, rounded-card). */
 @theme {
   --color-brand-900: #10352b;
   --color-brand-800: #143e32;

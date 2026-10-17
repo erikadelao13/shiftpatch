@@ -17,8 +17,7 @@ export class HttpError extends Error {
 
 const noStore = { "Cache-Control": "no-store" };
 
-// Every API error has the shape { error }. Anything unexpected becomes a
-// sanitized 500; the cause is logged, never returned.
+// Unexpected errors become a sanitized 500; the cause is logged, never returned.
 export function errorResponse(error: unknown): Response {
   if (error instanceof HttpError) {
     return Response.json(

@@ -15,9 +15,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
-    // `.env` holds the production branch, and Vitest's own NODE_ENV=test would
-    // read only `.env`. Load the development files explicitly so tests run on
-    // the dev branch; tests/setup.ts then refuses anything else.
+    // Vitest's NODE_ENV=test would read only `.env` (production). Load the
+    // development files explicitly; tests/setup.ts refuses anything but dev.
     env: loadEnv("development", root, ""),
     setupFiles: ["tests/setup.ts"],
   },

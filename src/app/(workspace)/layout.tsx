@@ -17,7 +17,6 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Logo tone="on-light" />
-          {/* The session read streams in behind a boundary (cacheComponents). */}
           <Suspense fallback={<div className="h-10 w-56" aria-hidden="true" />}>
             <SignedInUser />
           </Suspense>

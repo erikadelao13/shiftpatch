@@ -15,9 +15,8 @@ import { verifyToken } from "@/features/auth/server/token";
 import { getDb, getPrisma } from "@/shared/server/db";
 import { HttpError } from "@/shared/server/errors";
 
-// Runs against the Neon dev branch (tests/setup.ts refuses anything else) and
-// needs `pnpm db:seed`. Nothing is reset or truncated: every test creates rows
-// with unique ids and the cleanup deletes only those.
+// Runs on the Neon dev branch and needs `pnpm db:seed`. Creates uniquely
+// identified rows and deletes only those; never resets the database.
 const prisma = getPrisma();
 const runId = randomUUID().slice(0, 8);
 const PASSWORD = "Correct-horse-1!";
