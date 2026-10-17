@@ -1,26 +1,49 @@
 @import "tailwindcss";
 
+/* Tokens from docs/DESIGN.md §3 and §5. Tailwind exposes each as a CSS
+   variable and as a utility (bg-brand-800, text-text-muted, rounded-card). */
+@theme {
+  --color-brand-900: #10352b;
+  --color-brand-800: #143e32;
+  --color-canvas: #f7f8f3;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f0f3ee;
+  --color-sage: #dfe9dc;
+  --color-gold: #b8a16b;
+  --color-text: #20372e;
+  --color-text-muted: #52635b;
+  --color-on-brand: #f7f8f3;
+  --color-border: #dce3dc;
+  --color-input-border: #829086;
+  --color-focus: #356c55;
+  --color-success-bg: #e4efe2;
+  --color-success-text: #245b39;
+  --color-warning-bg: #fff3da;
+  --color-warning-text: #85510d;
+  --color-danger-bg: #fbeae7;
+  --color-danger-text: #a13227;
+  --color-neutral-bg: #edf0ed;
+  --color-neutral-text: #536058;
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-dm-serif), Georgia, serif;
+
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --shadow-card: 0 2px 8px rgb(20 62 50 / 4%);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
