@@ -10,15 +10,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # shiftpatch — agent instructions
 
-Next.js 16 App Router app, pnpm, TypeScript strict, Tailwind v4. The product is **not yet defined**; see the Draft docs below before assuming any domain behavior.
+Next.js 16 App Router app, pnpm, TypeScript strict, Tailwind v4. Product, Architecture and Design hold real content; read the relevant one before changing behavior. Some of it is still marked proposal.
 
 ## Documentation map
 
 | Need | Read |
 | --- | --- |
-| Purpose, users, scope | [docs/PRODUCT.md](docs/PRODUCT.md) — **Draft, undefined** |
+| Purpose, users, scope | [docs/PRODUCT.md](docs/PRODUCT.md) |
 | Boundaries, data, dependencies | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| UI hierarchy, tokens, states | [docs/DESIGN.md](docs/DESIGN.md) — **Draft, boilerplate only** |
+| UI hierarchy, tokens, states | [docs/DESIGN.md](docs/DESIGN.md) |
 | Which checks to run | [docs/VERIFICATION.md](docs/VERIFICATION.md) |
 | Plan lifecycle and template | [docs/PLANS.md](docs/PLANS.md) |
 | Hook behavior, tool adapters | [docs/HOOKS.md](docs/HOOKS.md) |
@@ -54,7 +54,7 @@ Resume a relevant plan in [docs/exec-plans/active/](docs/exec-plans/active/) bef
 Run the checks [docs/VERIFICATION.md](docs/VERIFICATION.md) prescribes for the kind of change you made, and report actual command output. Unexecuted checks have not passed.
 
 - Fast: `pnpm check:docs` + `pnpm lint` + `pnpm typecheck`
-- Full: `pnpm verify` (adds `pnpm build` and `pnpm test:e2e`)
+- Full: `pnpm verify` (adds `pnpm build`, `pnpm test` and `pnpm test:e2e`)
 
 Hooks supplement these checks; they do not replace them. A passing Stop hook proves documentation structure only, never application behavior.
 

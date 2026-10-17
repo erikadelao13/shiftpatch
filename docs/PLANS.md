@@ -8,7 +8,7 @@ Required:
 
 - Work spanning more than one session, or likely to be handed off.
 - Changes crossing a boundary: data model, persistence, auth, routing, or an external integration.
-- Anything resolving T1–T5 in [../ARCHITECTURE.md](../ARCHITECTURE.md), or P1–P7 in [PRODUCT.md](PRODUCT.md).
+- Anything that settles an open architecture question or product assumption. Record the outcome in [decisions.md](decisions.md).
 - Risky or hard-to-reverse work: dependency upgrades, build configuration, deletions.
 - Work where acceptance should be agreed before implementation starts.
 

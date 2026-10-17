@@ -18,7 +18,7 @@ Acceptance:
 - [x] Codex hook helper returns valid JSON for SessionStart, Stop success, Stop failure, Stop continuation, plan mode, unknown event, and malformed input.
 - [x] Git hooks are executable, resolve the repo root, and fail on a failing check.
 - [x] ~~Codex hook trust confirmed in the host via `/hooks`~~ — **superseded 2026-10-16.** Codex is no longer a target; the integration was removed and replaced by a Claude Code adapter. Tracked in [2026-10-16-claude-code-harness-adaptation.md](../completed/2026-10-16-claude-code-harness-adaptation.md).
-- [ ] Product (P1–P7), architecture (T1–T5), and design (D1–D6) questions answered, so the Draft documents can become real.
+- [x] Product, architecture, and design questions answered, so the Draft documents can become real. Done by 2026-10-17: PRODUCT.md, ARCHITECTURE.md and DESIGN.md hold real content, and the numbered question lists (P, T, D) no longer exist in them.
 
 Non-goals: implementing any product feature, choosing a backend, adding CI, deploying, or committing this work.
 
@@ -99,6 +99,6 @@ The Codex adapter described in the tables above (`.codex/hooks.json`, `scripts/c
 
 ## Handoff or outcome
 
-Next concrete action for the owner: answer P1–P4 in [../../PRODUCT.md](../../PRODUCT.md) so the Draft documents can be replaced with real content. Until then the harness is usable for mechanical work, and every product-dependent document is visibly marked Draft.
+Superseded 2026-10-17: the product, architecture and design documents now hold real content, so the Draft labels are gone. The harness itself is complete; remaining work is tracked in [../tech-debt-tracker.md](../tech-debt-tracker.md) and the active authentication plan.
 
 Committed 2026-10-16 on `chore/agent-harness` and merged into `main`; not pushed — there is no remote. One acceptance criterion remains open (the product/architecture/design questions), so this plan stays active. Tooling work continues in [2026-10-16-claude-code-harness-adaptation.md](../completed/2026-10-16-claude-code-harness-adaptation.md).

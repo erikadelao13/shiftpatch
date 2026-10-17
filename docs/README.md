@@ -4,12 +4,13 @@ Entry point for agents and contributors: [AGENTS.md](../AGENTS.md).
 
 | Document | Contains | Status |
 | --- | --- | --- |
-| [PRODUCT.md](PRODUCT.md) | Purpose, users, workflows, scope | **Draft — product undefined** |
-| [../ARCHITECTURE.md](../ARCHITECTURE.md) | Implemented baseline and separately labeled target | Partial — frontend baseline only |
-| [DESIGN.md](DESIGN.md) | Visual direction, tokens, states, accessibility | **Draft — boilerplate tokens only** |
+| [PRODUCT.md](PRODUCT.md) | Purpose, users, workflows, scope | Current |
+| [../ARCHITECTURE.md](../ARCHITECTURE.md) | Implemented baseline and separately labeled target | Partial — database foundation and authentication implemented; the rest is a labeled target |
+| [DESIGN.md](DESIGN.md) | Visual direction, tokens, states, accessibility | Current — sign-in screen implemented |
 | [VERIFICATION.md](VERIFICATION.md) | Commands, what each proves, change matrix, limits | Current |
 | [PLANS.md](PLANS.md) | When a plan is required, template, lifecycle | Current |
 | [HOOKS.md](HOOKS.md) | Git hooks, the Claude Code adapter, bounds, activation | Current |
+| [decisions.md](decisions.md) | Decisions and the reasons for them | Current |
 | [changes/README.md](changes/README.md) | Optional change specs for ambiguous behavior | Current |
 | [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md) | Nonblocking gaps and follow-ups | Current |
 | [../.agents/skills/README.md](../.agents/skills/README.md) | Reusable procedures and their triggers | Current |

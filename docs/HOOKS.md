@@ -14,7 +14,7 @@ All hooks here are check-only. None formats, stages, commits, or rewrites source
 | Hook | Runs | Rationale |
 | --- | --- | --- |
 | `pre-commit` | `pnpm check:docs`, `pnpm lint`, and `pnpm typecheck` **only when `.next/types/` exists** | Fast enough for every commit. `tsc` needs Next.js-generated route types, so on a never-built tree the hook prints a skip notice instead of failing — see TD-8. |
-| `pre-push` | `pnpm verify` | Full verification before work leaves the machine |
+| `pre-push` | `pnpm verify` | Full verification before work leaves the machine. It runs the database-backed tests, so it needs the network and the dev branch credentials ([VERIFICATION.md](VERIFICATION.md)) |
 
 Both use `#!/bin/sh` with `set -eu`, change to the Git root, and propagate failures. `pre-push` reads Git's ref-update lines from stdin and skips when no update carries content (a branch deletion, or empty stdin).
 

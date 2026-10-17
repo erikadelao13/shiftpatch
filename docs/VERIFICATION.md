@@ -9,6 +9,7 @@ What to run, what each command actually proves, and where coverage stops. Report
 - pnpm 10.27.0 (`corepack enable` honors the pinned `packageManager`).
 - `pnpm install` **on the correct Node version**, before the first run and after any dependency change. Installing under the wrong Node version skips platform-specific optional dependencies, which surfaces later as `Cannot find module './tailwindcss-oxide.darwin-universal.node'` during `pnpm build`. The fix is to re-run `pnpm install` under Node 20+.
 - Python 3.9+ on `PATH` as `python3`, for the harness documentation check. Verified locally with Python 3.13.6.
+- **Network and the Neon `dev` branch, for `pnpm test`, `pnpm test:e2e` and `pnpm verify`.** `.env.development` must hold `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_BRANCH=dev` and `AUTH_JWT_SECRET`, the branch must be migrated (`pnpm db:migrate`) and seeded (`pnpm db:seed`), and port 5432 must be reachable. Without them the integration tests fail in `beforeAll` and the e2e specs fail at sign-in. The `pre-push` hook runs `pnpm verify`, so a push needs them too.
 - Playwright browsers, installed once before `pnpm test:e2e`:
 
   ```sh
@@ -26,8 +27,10 @@ What to run, what each command actually proves, and where coverage stops. Report
 | `pnpm lint` | ESLint flat config with `eslint-config-next` core-web-vitals and TypeScript rules. Catches rule violations, not behavior. |
 | `pnpm typecheck` | `tsc --noEmit` under `strict`, across every `.ts`/`.tsx` in the project — including `playwright.config.ts` and `e2e/`, which `next build` does not necessarily reach. Requires `.next/types/` from a prior build. Proves nothing at runtime. |
 | `pnpm build` | `next build`. Proves the production build compiles and pages can be prerendered. Slow; the usual source of errors that `typecheck` alone misses, particularly around server/client boundaries. |
-| `pnpm test:e2e` | Playwright specs in `e2e/` against a dev server Playwright starts itself. Proves the app boots and the asserted UI is reachable in a real browser. |
-| `pnpm verify` | `check:docs` → `lint` → `build` → `typecheck` → `test:e2e`, failing fast. `build` runs **before** `typecheck` deliberately, so the generated route types exist by the time `tsc` runs. |
+| `pnpm test` | Vitest: unit tests beside the code, and `tests/integration/` against the Neon `dev` branch. Proves password hashing, token checks, the request guard, the login throttle and session revocation. `tests/setup.ts` fails the run unless `NEON_BRANCH=dev`. |
+| `pnpm test:e2e` | Playwright specs in `e2e/` against a dev server Playwright starts itself, on the `dev` branch. Proves the login API contract, the browser sign-in flow, redirects and sign-out in a real browser. |
+| `pnpm db:migrate`, `pnpm db:seed` | Apply migrations and load the spec fixtures. Both refuse unless `NEON_BRANCH=dev`. |
+| `pnpm verify` | `check:docs` → `lint` → `build` → `typecheck` → `test` → `test:e2e`, failing fast. `build` runs **before** `typecheck` deliberately, so the generated route types exist by the time `tsc` runs. |
 
 Aggregates, for convenience:
 
@@ -44,6 +47,7 @@ pnpm verify                                      # full, before handoff
 | `scripts/check_harness.py`, `scripts/pinned_node.py`, `scripts/harness.json` | `pnpm check:docs` and `python3 -m unittest discover -s scripts -p "test_harness.py"` |
 | `scripts/claude_hooks.py` | the above plus `python3 -m unittest discover -s scripts -p "test_claude_hooks.py"` |
 | TypeScript or TSX under `src/` | `pnpm lint`, `pnpm typecheck`, `pnpm build` |
+| `prisma/`, `prisma.config.ts`, `src/shared/server/`, `src/features/*/server/`, `src/proxy.ts`, `src/app/api/` | the above plus `pnpm test` and `pnpm test:e2e` |
 | Anything users can see or interact with | the above plus `pnpm test:e2e`, plus a manual look at the affected screen |
 | `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `package.json`, lockfile, `.npmrc`, `.nvmrc` | `pnpm verify` in full |
 | `.githooks/*` or `.claude/settings.json` | the hook tests in [HOOKS.md](HOOKS.md), plus `pnpm check:docs` |
@@ -58,11 +62,22 @@ Automated checks do not establish that a screen is usable. For UI work, run `pnp
 - Playwright starts and stops its own dev server on port 3000 (`playwright.config.ts`). Locally it reuses an already-running `pnpm dev`, so stale code in that server will be what gets tested; restart it when in doubt.
 - Playwright writes `test-results/` and `playwright-report/`; both are gitignored. Delete them freely.
 - `.next/` is a build cache. If a build failure looks impossible, remove `.next/` and rebuild before investigating further.
-- Never point tests at real credentials or shared data. There is no backend yet, so there is nothing to isolate — revisit this section when T1–T3 in [../ARCHITECTURE.md](../ARCHITECTURE.md) are resolved.
+- Never point tests at production credentials or the evaluator's shared data. Two gitignored files hold the two Neon branches:
+  - `.env` is the **`production`** branch (`NEON_BRANCH=production`).
+  - `.env.development` is the **`dev`** branch (`NEON_BRANCH=dev`).
+- Which command reads which file ([../ARCHITECTURE.md](../ARCHITECTURE.md) §12 has the full table):
+  - `pnpm dev`, Playwright, `pnpm test`, the Prisma CLI and `pnpm db:seed` read `.env.development` over `.env`, so they use `dev`.
+  - `pnpm build` and `pnpm start` read `.env`, so they use **production**. `next build` runs no queries, so a build is safe; a running `pnpm start` is not a test target.
+  - Vitest loads `.env.development` explicitly in `vitest.config.mts`. Its own `NODE_ENV=test` would otherwise read only `.env`.
+- Guards: `NEON_BRANCH` must be `dev` for the seed, `prisma migrate dev`, `migrate reset`, `db push`, and every Vitest run. `prisma migrate deploy` refuses unless `NODE_ENV=production`. The guard is only as good as the label in the file: a `.env.development` that points at production but says `dev` defeats it.
+- Tests never reset or truncate the database. Each creates rows with unique IDs and deletes only those (`tests/integration/`, `e2e/support.ts`). After a run the dev branch should hold only the seeded rows: 5 `User`, 2 `Agency`, no `ApiSession` or `LoginAttempt` rows.
+- Playwright reuses any server already on port 3000. A `pnpm start` there would point the e2e tests at **production**, so only `pnpm dev` may hold that port during an e2e run.
+- Manual database check: `curl -i http://localhost:3000/api/health` against a running `pnpm dev` (the `dev` branch). Running it against `pnpm build && pnpm start` instead checks the **production** branch with a harmless `select 1`; do that only deliberately, never during an e2e run. Expect `200 {"status":"ok"}`. A `503 {"error":"Database unavailable"}` means the app could not query Neon; the server log names the cause.
 
 ## Limitations — do not overclaim
 
-- **There are no unit or integration tests.** The only behavioral coverage is the Playwright smoke spec in `e2e/`, which asserts that the page renders. Logic correctness is currently unverified. Tracked in [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md).
+- **Only authentication is tested.** Shifts, credentials, audit and timesheets don't exist yet. There is no component-level testing, and no test verifies the production deployment. Tracked in [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md) (TD-1).
+- Integration and e2e tests depend on the Neon `dev` branch and the network. A failure may be connectivity rather than a defect: on 2026-10-16 a migration failed with `P1001` (TCP 5432 timed out) and succeeded on retry the next day.
 - `pnpm check:docs` validates link *targets*, not anchors, not URL reachability, and not HTML or MDX links. It skips code spans and fenced blocks and does not follow symlinked directories.
 - Git hooks inspect the working tree, not the exact staged or pushed snapshot. A clean `pre-commit` run does not prove a partially staged commit builds. `pre-commit` also *skips* `typecheck` when `.next/types/` is absent rather than failing — so a never-built tree gets less coverage than the message implies.
 - **There is no CI.** Every check above runs only where someone runs it. Tracked as debt.

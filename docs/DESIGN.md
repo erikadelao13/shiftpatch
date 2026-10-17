@@ -182,7 +182,13 @@ Display the following in order:
 8. Pale sage trust panel with shield icon and “Built around trusted care”.
 9. Access help: “Need access? Contact your administrator” with a functioning destination if presented as a link.
 
-Style Clerk-rendered authentication surfaces to follow these tokens and spacing rules. Keep authentication behavior, errors, and recovery flows within the configured provider integration. Do not duplicate provider controls or expose unsupported links to imitate the mockup. If the provider uses a multistep form, preserve that flow while retaining the surrounding branding.
+**Implemented (2026-10-17).** The screen is built in the app, in `src/app/login/page.tsx` and `src/features/auth/components/login-form.tsx`. Do not expose links the sign-in flow cannot honor, to imitate the mockup:
+
+- There is no password recovery link and no "remember me" checkbox, because the flow supports neither. Registration and recovery are out of scope.
+- "Need access? Contact your administrator" is plain text: there is no destination to link to.
+- The brand-panel illustration is made of abstract shapes with no text, so it cannot read as live staffing data.
+- Below the `lg` breakpoint the brand panel collapses to the logo, headline and supporting text above the form, and the illustration and footer phrase are hidden.
+- Tokens live in `@theme` in `src/app/globals.css`. Inter and DM Serif Display load through `next/font`, which removed the old Arial override (TD-3).
 
 Do not add public registration, social sign-in buttons, or a role selector unless product requirements explicitly support them. The account determines the role.
 
@@ -344,7 +350,7 @@ Do not add empty charts or placeholder side panels to occupy unused space.
 - Define tokens centrally and consume them through shared component styles or the project’s existing styling system.
 - Reuse components such as AppShell, Sidebar, PageHeader, StatCard, ShiftTable, ShiftCard, StatusBadge, FormField, EmptyState, and ConfirmDialog.
 - Keep feature-specific content within its feature; keep visual primitives reusable.
-- Style the configured Clerk authentication UI with this system without exposing provider implementation details to users.
+- The sign-in screen is self-built and follows §6; there is no third-party authentication UI to restyle.
 - Preserve every required UI test ID exactly as specified by the challenge. This document introduces no replacement test IDs.
 - Preserve core workflows and role permissions even where the mockup contains purely illustrative controls.
 - Keep this document and the final implementation synchronized when a design decision changes.
