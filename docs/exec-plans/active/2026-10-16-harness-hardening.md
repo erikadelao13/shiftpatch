@@ -69,4 +69,4 @@ Run 2026-10-16 from the repository root, from a shell whose default Node is v18.
 
 Next concrete action for the owner: start a new Claude Code session here, and confirm the startup context ends with "Bash commands use the Node pinned in .nvmrc" and `node -v` reports v24.16.0. Then tick the remaining criterion and move this plan to `completed/`.
 
-Nothing has been committed.
+Committed 2026-10-16 on `chore/agent-harness` (harness: `bf28d44`..`5dd9a1c`) and merged into `main`; not pushed — there is no remote.

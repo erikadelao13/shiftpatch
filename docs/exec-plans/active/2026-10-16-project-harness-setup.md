@@ -101,4 +101,4 @@ The Codex adapter described in the tables above (`.codex/hooks.json`, `scripts/c
 
 Next concrete action for the owner: answer P1–P4 in [../../PRODUCT.md](../../PRODUCT.md) so the Draft documents can be replaced with real content. Until then the harness is usable for mechanical work, and every product-dependent document is visibly marked Draft.
 
-Nothing has been committed. One acceptance criterion remains open (the product/architecture/design questions), so this plan stays active. Tooling work continues in [2026-10-16-claude-code-harness-adaptation.md](../completed/2026-10-16-claude-code-harness-adaptation.md).
+Committed 2026-10-16 on `chore/agent-harness` and merged into `main`; not pushed — there is no remote. One acceptance criterion remains open (the product/architecture/design questions), so this plan stays active. Tooling work continues in [2026-10-16-claude-code-harness-adaptation.md](../completed/2026-10-16-claude-code-harness-adaptation.md).
