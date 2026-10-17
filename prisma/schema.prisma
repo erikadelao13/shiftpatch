@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  nurse
+  agency
+  admin
+}
+
+model Agency {
+  id    String @id
+  name  String
+  users User[]
+}
+
+model User {
+  id           String       @id
+  email        String       @unique
+  name         String
+  role         Role
+  agencyId     String?
+  agency       Agency?      @relation(fields: [agencyId], references: [id])
+  passwordHash String
+  sessions     ApiSession[]
+}
+
+model ApiSession {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id          String   @id @default(uuid())
+  email       String
+  attemptedAt DateTime @default(now())
+
+  @@index([email, attemptedAt])
+}

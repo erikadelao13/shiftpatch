@@ -11,9 +11,13 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:deploy": "prisma migrate deploy",
     "check:docs": "python3 scripts/check_harness.py",
     "test:e2e": "playwright test",
-    "verify": "pnpm check:docs && pnpm lint && pnpm build && pnpm typecheck && pnpm test:e2e"
+    "verify": "pnpm check:docs && pnpm lint && pnpm build && pnpm typecheck && pnpm test:e2e",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@neon/config": "^1.9.2",
