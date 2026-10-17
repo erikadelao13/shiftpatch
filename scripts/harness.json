@@ -1,0 +1,35 @@
+{
+  "agents": "AGENTS.md",
+  "maxAgentLines": 100,
+  "activePlans": "docs/exec-plans/active",
+  "required": [
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    "docs/README.md",
+    "docs/PRODUCT.md",
+    "docs/DESIGN.md",
+    "docs/PLANS.md",
+    "docs/VERIFICATION.md",
+    "docs/HOOKS.md",
+    "docs/changes/README.md",
+    "docs/exec-plans/active",
+    "docs/exec-plans/completed",
+    "docs/exec-plans/tech-debt-tracker.md",
+    ".agents/skills/README.md",
+    "scripts/check_harness.py",
+    "playwright.config.ts",
+    "README.md"
+  ],
+  "forbidden": [
+    "CLAUDE.md",
+    ".claude/CLAUDE.md",
+    "CLAUDE.local.md"
+  ],
+  "markdownRoots": [
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    "README.md",
+    "docs",
+    ".agents/skills"
+  ]
+}

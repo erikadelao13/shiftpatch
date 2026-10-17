@@ -10,7 +10,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test"
+    "typecheck": "tsc --noEmit",
+    "check:docs": "python3 scripts/check_harness.py",
+    "test:e2e": "playwright test",
+    "verify": "pnpm check:docs && pnpm lint && pnpm build && pnpm typecheck && pnpm test:e2e"
   },
   "dependencies": {
     "next": "16.4.2",
