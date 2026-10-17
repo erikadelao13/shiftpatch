@@ -57,3 +57,12 @@ Run the checks [docs/VERIFICATION.md](docs/VERIFICATION.md) prescribes for the k
 - Full: `pnpm verify` (adds `pnpm build` and `pnpm test:e2e`)
 
 Hooks supplement these checks; they do not replace them. A passing Stop hook proves documentation structure only, never application behavior.
+
+## Code clarity and comments
+
+- Prefer self-explanatory code: clear names, focused functions, and straightforward control flow.
+- Do not add comments or JSDoc by default. TypeScript types should describe inputs and outputs.
+- Avoid comments that restate the code, label obvious sections, narrate implementation steps, or describe routine changes.
+- Add a short comment only when it explains a non-obvious reason, constraint, security decision, or compatibility requirement.
+- Before adding a comment, consider whether renaming or simplifying the code would make it unnecessary.
+- When editing existing code, remove redundant or outdated comments in the affected area. Preserve useful rationale and required license or generated directives.
