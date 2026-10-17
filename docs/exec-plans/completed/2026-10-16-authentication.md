@@ -308,10 +308,10 @@ Route table from the build: `/` and `/admin`, `/agency`, `/nurse` partial preren
 
 Complete 2026-10-17. All seven acceptance criteria pass, with the evidence above. The work is committed and merged on `main` (`1992efb` to `c977019`), and the code follows the `AGENTS.md` comment guidelines.
 
-Known gaps, recorded in [../tech-debt-tracker.md](../tech-debt-tracker.md):
+Known gaps:
 
-- No production-mode run (`pnpm start`), so the `Secure` cookie flag is untested; no measured color contrast, no screen reader testing, Chromium only (TD-14).
-- No CI (TD-2); the throttle is per email only (TD-13); auth rows are never pruned (TD-12).
+- Not verified, and not tracked as debt: production mode (`pnpm start` reads the production `.env`, so the `Secure` cookie flag is untested), rendered color contrast, screen reader use, and browsers other than Chromium.
+- Tracked in [../tech-debt-tracker.md](../tech-debt-tracker.md): no CI (TD-2), the per-email-only throttle (TD-13), and unpruned auth rows (TD-12).
 - Whether the Neon `dev` branch has the default 7-day TTL is unconfirmed. It is listed under Open items in [../../decisions.md](../../decisions.md).
 
 Next plan: shifts (`GET/POST /api/shifts`, claim, cancel, the agency-scoped list). It can reuse `requireActor` and the actor's `agencyId`, and it should first resolve the `cancelled` status question (see `docs/decisions.md`, Open items).
