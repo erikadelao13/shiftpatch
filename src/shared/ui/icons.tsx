@@ -85,6 +85,16 @@ export function GridIcon(props: IconProps) {
   );
 }
 
+export function RefreshIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 12a8 8 0 0 1-14.2 5" />
+      <path d="M4 12a8 8 0 0 1 14.2-5" />
+      <path d="M18.5 3v4h-4M5.5 21v-4h4" />
+    </Icon>
+  );
+}
+
 export function CalendarIcon(props: IconProps) {
   return (
     <Icon {...props}>
