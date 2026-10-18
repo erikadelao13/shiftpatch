@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 
 import { signOut } from "@/features/auth/actions";
 import { requireRole } from "@/features/auth/server/current-user";
-import { CalendarIcon, GridIcon } from "@/shared/ui/icons";
+import { CalendarIcon, DocumentIcon, GridIcon } from "@/shared/ui/icons";
 import { Sidebar } from "@/shared/ui/sidebar";
+import { SidebarNav } from "@/shared/ui/sidebar-nav";
 
 export default function NurseLayout({ children }: { children: ReactNode }) {
   return (
@@ -27,29 +27,14 @@ async function NurseSidebar() {
       roleLabel="Nurse"
       signOutAction={signOut}
       nav={
-        <nav aria-label="Nurse">
-          <ul className="flex flex-col gap-1">
-            <li>
-              <Link
-                href="/nurse"
-                aria-current="page"
-                className="flex h-11 items-center gap-3 rounded-control bg-sage px-3 text-base font-medium text-brand-800"
-              >
-                <GridIcon />
-                Shift marketplace
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/nurse#my-shifts"
-                className="flex h-11 items-center gap-3 rounded-control px-3 text-base font-medium hover:bg-on-brand/10"
-              >
-                <CalendarIcon />
-                My shifts
-              </Link>
-            </li>
-          </ul>
-        </nav>
+        <SidebarNav
+          label="Nurse"
+          items={[
+            { href: "/nurse", label: "Shift marketplace", icon: <GridIcon /> },
+            { href: "/nurse#my-shifts", label: "My shifts", icon: <CalendarIcon /> },
+            { href: "/nurse/credentials", label: "Credentials", icon: <DocumentIcon /> },
+          ]}
+        />
       }
     />
   );
