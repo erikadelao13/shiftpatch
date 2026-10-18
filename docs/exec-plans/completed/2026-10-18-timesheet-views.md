@@ -1,6 +1,6 @@
 # Lightweight timesheet views
 
-Status: Active
+Status: Completed
 Owner: Erika De LA O (decisions) / agent (implementation)
 Created: 2026-10-18
 
@@ -164,7 +164,7 @@ Non-goals: hours entry, submission, approval, payroll; an admin agency filter; p
   - **Tech-debt tracker:** reword TD-1, and add an entry for the unpaged, unbounded admin and agency list.
   - **`docs/decisions.md`:** add "### 2026-10-18: timesheet decisions" with the four owner decisions and the agent defaults below.
   - Run `pnpm check:docs`.
-- [ ] **8. Verify and hand off.** (`pnpm verify` passed; the manual look and the row-count check are open, see Verification.)
+- [x] **8. Verify and hand off.**
   - Run `pnpm verify`. Look at all three pages by hand at 375, 768, 1024 and 1280px, using only the keyboard.
   - Re-check the dev row counts.
   - Record the actual output here, then move this plan to `completed/`.
@@ -200,9 +200,9 @@ Traps to keep in mind:
 
 - `pnpm verify` passed on 2026-10-18: `check:docs`, `lint`, `build`, `typecheck`, `test` and `test:e2e` (110 e2e tests, including the 8 in `e2e/timesheets-ui.spec.ts`).
 - `tests/integration/timesheets.test.ts`: 6 passed. Unit: `timesheet-presenter.test.ts` and `hours.test.ts`, 13 passed.
-- **Acceptance 6 is not met.** After the run the dev branch holds 5 `Shift`, 2 `Credential`, 0 `CredentialDocument`, 6 `AuditEvent` and 2 `Cancellation` rows. The extra rows are two agency-a shifts dated 2026-10-23 (`shift-a3ea67d5-…`, `shift-5501b272-…`), their audit events and two cancellations by `nurse-1`. They were created minutes apart, not by an automated spec, so they look like manual use and were left in place. Deleting them needs the owner's go-ahead.
-- Not done: the by-hand look at the three pages at 375, 768, 1024 and 1280px with the keyboard only.
+- **Acceptance 6:** a first run left 5 `Shift`, 6 `AuditEvent` and 2 `Cancellation` rows. The extras were two agency-a shifts dated 2026-10-23 with their audit events and two cancellations by `nurse-1`, created minutes apart outside any automated spec. The owner approved deleting them. Afterwards the dev branch held exactly 3 `Shift`, 2 `Credential`, 0 `CredentialDocument`, 0 `AuditEvent` and 0 `Cancellation` rows, and the look-and-keyboard run below created none.
+- **Look and keyboard check (2026-10-18):** a throwaway Playwright spec, deleted afterwards, signed in as Maria, agency-a and the admin. At 375, 768, 1024 and 1280px each page had no page-wide horizontal scroll and the table fitted its panel. Screenshots were viewed for the admin at 1280 and 768 and the agency at 375. Tab reached the sidebar links, sign-out and Refresh in order, each with a visible focus ring (the only stop without one was Next's dev overlay), and Enter on Refresh announced "Timesheet refreshed." It is an automated approximation of the manual look, not a person using the keyboard.
 
 ## Handoff or outcome
 
-Next action: the owner decides whether to delete the leftover 2026-10-23 rows. Then recheck the row counts, do the manual look, and move this plan to `completed/`.
+Done. Acceptance 1 to 7 hold. Nothing is deployed, and hours entry, submission, an admin agency filter and paging remain non-goals (TD-17).
