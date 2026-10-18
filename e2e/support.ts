@@ -43,6 +43,7 @@ export async function deleteOwnRows(rows: {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED });
   try {
     if (shiftIds.length > 0) {
+      await pool.query('delete from "AuditEvent" where "resourceId" = any($1::text[])', [shiftIds]);
       await pool.query('delete from "Shift" where id = any($1::text[])', [shiftIds]);
     }
     if (sessionIds.length > 0) {
