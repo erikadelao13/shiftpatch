@@ -4,7 +4,12 @@ import { loadEnvConfig } from "@next/env";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/features/auth/server/password";
 import { assertDevBranch } from "./branch-guard";
-import { FIXTURE_PASSWORD, fixtureAgencies, fixtureUsers } from "./fixtures";
+import {
+  FIXTURE_PASSWORD,
+  fixtureAgencies,
+  fixtureShifts,
+  fixtureUsers,
+} from "./fixtures";
 
 // `.env` holds production; load the development files over it.
 loadEnvConfig(process.cwd(), true);
@@ -37,8 +42,17 @@ async function main() {
       });
     }
 
+    for (const shift of fixtureShifts) {
+      const data = { ...shift, date: new Date(shift.date) };
+      await prisma.shift.upsert({
+        where: { id: shift.id },
+        update: data,
+        create: data,
+      });
+    }
+
     console.log(
-      `Seeded ${fixtureAgencies.length} agencies and ${fixtureUsers.length} users on branch "${process.env.NEON_BRANCH}".`,
+      `Seeded ${fixtureAgencies.length} agencies, ${fixtureUsers.length} users and ${fixtureShifts.length} shifts on branch "${process.env.NEON_BRANCH}".`,
     );
   } finally {
     await prisma.$disconnect();

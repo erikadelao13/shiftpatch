@@ -44,3 +44,36 @@ export const fixtureUsers = [
     agencyId: null,
   },
 ] as const;
+
+export const fixtureShifts = [
+  {
+    id: "shift-1",
+    agencyId: "agency-a",
+    role: "RN",
+    date: "2026-10-02",
+    startTime: "19:00",
+    endTime: "07:00",
+    status: "open",
+    claimedById: null,
+  },
+  {
+    id: "shift-2",
+    agencyId: "agency-a",
+    role: "LPN",
+    date: "2026-10-03",
+    startTime: "07:00",
+    endTime: "19:00",
+    status: "filled",
+    claimedById: "nurse-1",
+  },
+  {
+    id: "shift-3",
+    agencyId: "agency-b",
+    role: "RN",
+    date: "2026-10-04",
+    startTime: "19:00",
+    endTime: "07:00",
+    status: "open",
+    claimedById: null,
+  },
+] as const;

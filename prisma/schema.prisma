@@ -13,21 +13,33 @@ enum Role {
   admin
 }
 
+enum ShiftRole {
+  RN
+  LPN
+}
+
+enum ShiftStatus {
+  open
+  filled
+}
+
 model Agency {
-  id    String @id
-  name  String
-  users User[]
+  id     String  @id
+  name   String
+  users  User[]
+  shifts Shift[]
 }
 
 model User {
-  id           String       @id
-  email        String       @unique
-  name         String
-  role         Role
-  agencyId     String?
-  agency       Agency?      @relation(fields: [agencyId], references: [id])
-  passwordHash String
-  sessions     ApiSession[]
+  id            String       @id
+  email         String       @unique
+  name          String
+  role          Role
+  agencyId      String?
+  agency        Agency?      @relation(fields: [agencyId], references: [id])
+  passwordHash  String
+  sessions      ApiSession[]
+  claimedShifts Shift[]
 }
 
 model ApiSession {
@@ -47,4 +59,20 @@ model LoginAttempt {
   attemptedAt DateTime @default(now())
 
   @@index([email, attemptedAt])
+}
+
+model Shift {
+  id          String      @id
+  agencyId    String
+  agency      Agency      @relation(fields: [agencyId], references: [id])
+  role        ShiftRole
+  date        DateTime    @db.Date
+  startTime   String      @db.Char(5)
+  endTime     String      @db.Char(5)
+  status      ShiftStatus @default(open)
+  claimedById String?
+  claimedBy   User?       @relation(fields: [claimedById], references: [id])
+  createdAt   DateTime    @default(now())
+
+  @@index([agencyId, date, startTime])
 }
