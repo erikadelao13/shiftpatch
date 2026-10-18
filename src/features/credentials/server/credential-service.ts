@@ -99,7 +99,7 @@ export async function saveCredential(
         action: "credential_updated",
         resourceType: "credential",
         resourceId: credential.id,
-        metadata: { previousExpiresOn, expiresOn: input.expiresOn },
+        metadata: { nurseId: actor.id, previousExpiresOn, expiresOn: input.expiresOn },
       });
 
       return {
