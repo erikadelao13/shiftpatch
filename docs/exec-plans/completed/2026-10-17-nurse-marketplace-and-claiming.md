@@ -1,6 +1,6 @@
 # Nurse marketplace and claiming
 
-Status: Active
+Status: Complete, pending owner review
 Owner: Erika De LA O (decisions) / agent (implementation)
 Created: 2026-10-17
 
@@ -10,21 +10,21 @@ A nurse claims an open shift from the marketplace. The server checks the nurse's
 
 Acceptance:
 
-- [ ] **Baseline committed.** The nurse UI that is uncommitted on `main` is committed on `feat/nurse-marketplace-claim`, in its own commits, before any claim work starts. The shift-listing plan is in `completed/`.
-- [ ] **Successful claim.** When Maria (`nurse-1`) claims an open shift with `POST /api/shifts/:id/claim`, she gets `200` and a ShiftDTO with exactly the nine keys, `status: "filled"` and `claimedBy: "nurse-1"`. The claim persists, and it shows in `GET /api/shifts`, on the agency board and in Maria's My shifts. Any request body is ignored, because the nurse comes from the token.
-- [ ] **Expired credential.** James (`nurse-2`) gets exactly `403 { "error": "Credential expired, cannot claim shift" }`. The shift doesn't change and no audit event is written.
-- [ ] **Expiry boundary.** "Today" is injected in tests. On the day before the expiry date and on the expiry date, the claim succeeds. On the day after, it gets the 403. At runtime, "today" is the UTC calendar date.
-- [ ] **Missing credential.** A nurse with no `Credential` row gets `403 { "error": "No credential on file, cannot claim shift" }`.
-- [ ] **Other errors.** An agency or the admin gets `403 "Only nurses can claim shifts"`. An unknown shift gets `404 "Shift not found"`. A filled shift gets `409 "Shift is no longer available"`. A request without authentication gets `401`. Every error is `{ error }`, and every response sets `Cache-Control: no-store`.
-- [ ] **Race.** Two concurrent valid claims on the same open shift give exactly one success and one `409`, one assigned nurse and one audit event. Proven against the dev database, never with mocks.
-- [ ] **Audit.** Each successful claim writes one `AuditEvent` (actor, `shift_claimed`, resource `shift` plus its ID, the time, and `{ agencyId }`) in the same transaction as the shift update. A rejected claim writes nothing.
-- [ ] **Credential table.** A `Credential` model and its migration exist. `pnpm db:seed` loads exactly `nurse-1` → 2027-01-01 and `nurse-2` → 2026-06-01, and running it twice gives the same result. The `SEEDED_EXPIRIES` constant is gone, and TD-14 is closed.
-- [ ] **Marketplace UI.** Exercised through the test IDs:
+- [x] **Baseline committed.** The nurse UI that is uncommitted on `main` is committed on `feat/nurse-marketplace-claim`, in its own commits, before any claim work starts. The shift-listing plan is in `completed/`.
+- [x] **Successful claim.** When Maria (`nurse-1`) claims an open shift with `POST /api/shifts/:id/claim`, she gets `200` and a ShiftDTO with exactly the nine keys, `status: "filled"` and `claimedBy: "nurse-1"`. The claim persists, and it shows in `GET /api/shifts`, on the agency board and in Maria's My shifts. Any request body is ignored, because the nurse comes from the token.
+- [x] **Expired credential.** James (`nurse-2`) gets exactly `403 { "error": "Credential expired, cannot claim shift" }`. The shift doesn't change and no audit event is written.
+- [x] **Expiry boundary.** "Today" is injected in tests. On the day before the expiry date and on the expiry date, the claim succeeds. On the day after, it gets the 403. At runtime, "today" is the UTC calendar date.
+- [x] **Missing credential.** A nurse with no `Credential` row gets `403 { "error": "No credential on file, cannot claim shift" }`.
+- [x] **Other errors.** An agency or the admin gets `403 "Only nurses can claim shifts"`. An unknown shift gets `404 "Shift not found"`. A filled shift gets `409 "Shift is no longer available"`. A request without authentication gets `401`. Every error is `{ error }`, and every response sets `Cache-Control: no-store`.
+- [x] **Race.** Two concurrent valid claims on the same open shift give exactly one success and one `409`, one assigned nurse and one audit event. Proven against the dev database, never with mocks.
+- [x] **Audit.** Each successful claim writes one `AuditEvent` (actor, `shift_claimed`, resource `shift` plus its ID, the time, and `{ agencyId }`) in the same transaction as the shift update. A rejected claim writes nothing.
+- [x] **Credential table.** A `Credential` model and its migration exist. `pnpm db:seed` loads exactly `nurse-1` → 2027-01-01 and `nurse-2` → 2026-06-01, and running it twice gives the same result. The `SEEDED_EXPIRIES` constant is gone, and TD-14 is closed.
+- [x] **Marketplace UI.** Exercised through the test IDs:
   - Maria clicks `shift-claim-button`. `notification-banner` starts with "Shift claimed", and the shift moves from Available shifts to My shifts and is still there after a reload.
   - James clicks it. The banner shows the exact expired message, and the shift is still open after a reload.
   - When someone else claimed the shift first, the banner says "Shift is no longer available" and the refreshed list no longer shows that shift.
   - Claim buttons stay disabled until both the claim and the refresh that follows it have finished.
-- [ ] **Docs and checks.** The docs in step 7 are updated and `pnpm verify` passes. After the run, the dev branch holds only seeded rows: 3 `Shift` rows in their spec state, 2 `Credential` rows and 0 `AuditEvent` rows.
+- [x] **Docs and checks.** The docs in step 7 are updated and `pnpm verify` passes. After the run, the dev branch holds only seeded rows: 3 `Shift` rows in their spec state, 2 `Credential` rows and 0 `AuditEvent` rows.
 
 Non-goals:
 
@@ -143,22 +143,22 @@ Add the back-relations to `User`.
 
 ## Steps and progress
 
-- [ ] **0. Baseline and branch.**
+- [x] **0. Baseline and branch.**
   - `git switch -c feat/nurse-marketplace-claim`.
   - On the uncommitted UI as it stands, run `pnpm lint`, `pnpm build`, `pnpm typecheck`, `pnpm vitest run src/features/credentials src/features/shifts` and `pnpm exec playwright test e2e/nurse-ui.spec.ts`. Record the results. Fix only what blocks, such as the `new Date()` prerender.
   - Commit it by context with the `contextual-commits` skill: credential status and banner; the nurse shell and marketplace; its e2e spec; its docs.
   - Move the shift-listing plan to `completed/`, set its status to `Complete`, repair the links and run `pnpm check:docs`. Commit that separately.
   - Confirm the key names in `.env.development`. Print the names only, never the values.
-- [ ] **1. Schema, migration, seed.**
+- [x] **1. Schema, migration, seed.**
   - Add the models and run `prisma migrate dev --create-only --name credentials_and_audit`. Read the SQL, then apply it with `pnpm db:migrate` (dev branch only).
   - Run `--create-only` once more. It must generate an empty migration; delete that.
   - Add `fixtureCredentials` to `prisma/fixtures.ts`. The seed upserts them by `nurseId` and resets `expiresOn`, and its log line counts credentials too.
   - Run `pnpm db:seed` twice.
-- [ ] **2. Credential service and policy.**
+- [x] **2. Credential service and policy.**
   - Replace the constant with the Prisma query.
   - Add `canClaimShift` and `credentialClaimError`, with their cases in `shift-policy.test.ts`.
   - Close TD-14.
-- [ ] **3. Audit service, `claimShift` and integration tests.** New file `tests/integration/claims.test.ts`:
+- [x] **3. Audit service, `claimShift` and integration tests.** New file `tests/integration/claims.test.ts`:
   - `beforeAll` fails with "Run `pnpm db:seed`" unless the 3 shifts and the 2 credentials are in their spec state.
   - Create throwaway rows: an agency and its user, plus nurses whose credential is valid, expired, on a boundary date, or missing. Create their open shifts with `createShift`.
   - Successful claim: the DTO, the database row, and exactly one audit event with the right fields.
@@ -168,14 +168,14 @@ Add the back-relations to `User`.
   - Race: two valid nurses claim one shift through `Promise.allSettled`, on several fresh shifts. Each time, exactly one call succeeds and the other gets `409`, `claimedById` is the winner, and there is exactly one audit row.
   - `afterAll` deletes the audit rows, then the shifts, the users (whose credentials cascade) and the agency.
   - If an interactive transaction fails over Neon's pooled `DATABASE_URL`, stop and record the error. Don't switch strategy silently.
-- [ ] **4. Route and HTTP contract.** Add the route file and a new `e2e/claim-api.spec.ts`. The cases:
+- [x] **4. Route and HTTP contract.** Add the route file and a new `e2e/claim-api.spec.ts`. The cases:
   - agency-a posts a throwaway shift with a Bearer token; Maria claims it and gets `200` with the exact DTO; a second claim gets `409`.
   - James on `shift-1` gets the exact 403 body, and `GET /api/shifts` shows `shift-1` unchanged.
   - The agency and admin `403`, the unknown-shift `404`, and `401` without a token.
   - Two parallel claims by Maria give the statuses `[200, 409]`.
 
   Track every created ID for cleanup.
-- [ ] **5. UI.** Make the pending-state change above, then extend `e2e/nurse-ui.spec.ts`:
+- [x] **5. UI.** Make the pending-state change above, then extend `e2e/nurse-ui.spec.ts`:
   - Maria claims a throwaway shift, with the outcome described under Acceptance.
   - James is rejected on `shift-1`.
   - The lost race: Maria opens the page, the same shift is claimed through the API with a second Maria session, and then she clicks it in the UI.
@@ -183,13 +183,13 @@ Add the back-relations to `User`.
   The specs run `fullyParallel`, so:
   - Never claim a seeded shift.
   - Post throwaway shifts as agency-a, on dates no other test uses, so you can find their rows and the existing count-based assertion on the Metro filter still holds.
-- [ ] **6. Manual check** on `pnpm dev`, following [../../VERIFICATION.md](../../VERIFICATION.md) "Manual and UI verification":
+- [x] **6. Manual check** on `pnpm dev`, following [../../VERIFICATION.md](../../VERIFICATION.md) "Manual and UI verification":
   - Look at Maria and James at 375 px and 1440 px.
   - Claim using only the keyboard.
   - Check that the banner is announced.
   - Make one claim with `curl` and a Bearer token.
   - A manual claim of a seeded shift changes it, so run `pnpm db:seed` afterwards.
-- [ ] **7. Docs.**
+- [x] **7. Docs.**
   - ARCHITECTURE:
     - The status line.
     - §3: mark the claim route, `credentials/server` and `audit/server` as implemented.
@@ -208,7 +208,7 @@ Add the back-relations to `User`.
     - Close TD-14.
     - Update TD-1.
     - Add: `POST /api/shifts` isn't audited until the audit plan (PR-11).
-- [ ] **8. Verify and hand off.**
+- [x] **8. Verify and hand off.**
   - Run `pnpm verify` and record its real output.
   - Check the dev branch's row counts.
   - Tick the criteria that pass.
@@ -238,8 +238,25 @@ Discoveries:
 
 ## Verification
 
-Nothing has run yet.
+Run on 2026-10-17 on branch `feat/nurse-marketplace-claim`, against the Neon `dev` branch:
+
+- Step 0, on the uncommitted nurse UI: `pnpm lint`, `pnpm typecheck` and `pnpm vitest run src/features/credentials src/features/shifts` passed (39 tests); `pnpm build` passed with no `new Date()` prerender error, so `connection()` wasn't needed; `pnpm exec playwright test e2e/nurse-ui.spec.ts` passed 3 of 3.
+- `.env.development` holds `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_BRANCH` and `AUTH_JWT_SECRET`.
+- Migration `credentials_and_audit` applied; a second `--create-only` generated an empty migration, which I deleted. `pnpm db:seed` ran twice with the same result: 3 shifts, 2 credentials (`nurse-1` 2027-01-01, `nurse-2` 2026-06-01).
+- Final `pnpm verify`, exit 0: `check:docs` passed; lint clean; build compiled and listed `/api/shifts/[id]/claim`; typecheck clean; Vitest 12 files, 107 tests passed; Playwright 67 passed.
+- The claim runs in an interactive transaction over the pooled `DATABASE_URL` without trouble. The race test ran five rounds of two concurrent claims and each gave one success and one `409`.
+- Manual check on `pnpm dev`: Maria and James at 375 px and 1440 px with no horizontal overflow; James's error banner shows the exact message; a keyboard-only claim (Tab to the button, Enter) works with a visible focus ring; the banner is `role="status"` for success and `role="alert"` for errors; a Bearer-token claim returned `200`, `no-store` and the nine-key DTO. I did not test with a screen reader, so "announced" rests on the ARIA roles only.
+- After the run, the dev branch holds 3 `Shift` (spec state), 2 `Credential` and 0 `AuditEvent` rows.
 
 ## Handoff or outcome
 
-Next action: step 0. Create the branch, check the uncommitted UI, and commit it by context.
+Complete, pending owner review. All acceptance criteria pass. I committed by context as the work went (baseline, schema, claim backend, claim e2e, UI); the docs and plan updates from step 7 are the last commit. Nothing is pushed.
+
+Things to know:
+
+- A `pnpm dev` that was already running kept the Prisma client from before `prisma generate`, so the new route returned `500` until it was restarted. I stopped it. VERIFICATION now notes this.
+- A failed run of the race test (the default 5 s timeout) left one throwaway agency and shift on `dev`. I deleted those two rows by exact id and gave the test a 60 s timeout.
+- 13 `ApiSession` rows sit on `dev`, and were there before the final run. They aren't from this plan's tests, and I left them. TD-12 covers pruning.
+- Agent defaults awaiting review are listed above and in `docs/decisions.md`.
+
+Next action: owner review, then the next plan: cancellation and no-show (`POST /api/shifts/:id/cancel`, `shift-cancel-button`).
