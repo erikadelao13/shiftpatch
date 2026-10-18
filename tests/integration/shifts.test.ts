@@ -6,7 +6,9 @@ import { fixtureShifts } from "../../prisma/fixtures";
 import type { Actor } from "@/features/auth/types";
 import {
   createShift,
+  getAdminBoard,
   getAgencyBoard,
+  listAgencies,
   listAgencyShifts,
   listShifts,
 } from "@/features/shifts/server/shift-service";
@@ -202,5 +204,59 @@ describe("getAgencyBoard", () => {
       nurseName: "Maria Lopez",
     });
     expect(board.find((shift) => shift.id === "shift-1")?.nurseName).toBeNull();
+  });
+});
+
+describe("getAdminBoard", () => {
+  it("returns every agency's shifts with agency and nurse names, in schedule order", async () => {
+    const created = await createShift(throwawayAgency, {
+      role: "RN",
+      date: "2026-12-01",
+      startTime: "07:00",
+      endTime: "19:00",
+    });
+    const board = await getAdminBoard();
+
+    expect(board.find((shift) => shift.id === "shift-1")).toEqual({
+      id: "shift-1",
+      role: "RN",
+      date: "2026-10-02",
+      startTime: "19:00",
+      endTime: "07:00",
+      status: "open",
+      nurseName: null,
+      agencyId: "agency-a",
+      agencyName: "Sunrise Health Staffing",
+    });
+    expect(board.find((shift) => shift.id === "shift-2")).toMatchObject({
+      agencyName: "Sunrise Health Staffing",
+      nurseName: "Maria Lopez",
+      status: "filled",
+    });
+    expect(board.find((shift) => shift.id === "shift-3")).toMatchObject({
+      agencyId: "agency-b",
+      agencyName: "Metro Care Partners",
+      nurseName: null,
+      status: "open",
+    });
+    expect(board.find((shift) => shift.id === created.id)).toMatchObject({
+      agencyId,
+      agencyName: "Throwaway Agency",
+    });
+
+    const keys = board.map((shift) => `${shift.date}T${shift.startTime}`);
+    expect(keys).toEqual([...keys].sort());
+  });
+});
+
+describe("listAgencies", () => {
+  it("lists the fixture agencies and the throwaway one, sorted by name", async () => {
+    const agencies = await listAgencies();
+
+    expect(agencies).toContainEqual({ id: "agency-a", name: "Sunrise Health Staffing" });
+    expect(agencies).toContainEqual({ id: "agency-b", name: "Metro Care Partners" });
+    expect(agencies).toContainEqual({ id: agencyId, name: "Throwaway Agency" });
+    const names = agencies.map((agency) => agency.name);
+    expect(names).toEqual([...names].sort());
   });
 });

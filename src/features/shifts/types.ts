@@ -31,6 +31,10 @@ export type AgencyShift = Pick<
   nurseName: string | null;
 };
 
+export type AdminShift = AgencyShift & Pick<ShiftDTO, "agencyId" | "agencyName">;
+
+export type AgencyOption = { id: string; name: string };
+
 export type MarketplaceShift = Pick<
   ShiftDTO,
   "id" | "role" | "date" | "startTime" | "endTime" | "agencyName"

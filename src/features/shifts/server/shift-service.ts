@@ -12,6 +12,8 @@ import { getPrisma } from "@/shared/server/db";
 
 import type { NewShiftInput } from "../schemas";
 import type {
+  AdminShift,
+  AgencyOption,
   AgencyShift,
   CancellationReason,
   CancelledShiftDTO,
@@ -170,13 +172,16 @@ export async function cancelShift(
   });
 }
 
-export async function getAgencyBoard(agencyId: string): Promise<AgencyShift[]> {
-  const rows = await getPrisma().shift.findMany({
-    where: { agencyId },
-    include: { claimedBy: { select: { name: true } } },
-    orderBy: [...inScheduleOrder],
-  });
-  return rows.map((row) => ({
+function toBoardShift(row: {
+  id: string;
+  role: AgencyShift["role"];
+  date: Date;
+  startTime: string;
+  endTime: string;
+  status: AgencyShift["status"];
+  claimedBy: { name: string } | null;
+}): AgencyShift {
+  return {
     id: row.id,
     role: row.role,
     date: row.date.toISOString().slice(0, 10),
@@ -184,7 +189,35 @@ export async function getAgencyBoard(agencyId: string): Promise<AgencyShift[]> {
     endTime: row.endTime,
     status: row.status,
     nurseName: row.claimedBy?.name ?? null,
+  };
+}
+
+export async function getAgencyBoard(agencyId: string): Promise<AgencyShift[]> {
+  const rows = await getPrisma().shift.findMany({
+    where: { agencyId },
+    include: { claimedBy: { select: { name: true } } },
+    orderBy: [...inScheduleOrder],
+  });
+  return rows.map(toBoardShift);
+}
+
+export async function getAdminBoard(): Promise<AdminShift[]> {
+  const rows = await getPrisma().shift.findMany({
+    include: { claimedBy: { select: { name: true } }, agency: { select: { name: true } } },
+    orderBy: [...inScheduleOrder],
+  });
+  return rows.map((row) => ({
+    ...toBoardShift(row),
+    agencyId: row.agencyId,
+    agencyName: row.agency.name,
   }));
+}
+
+export async function listAgencies(): Promise<AgencyOption[]> {
+  return getPrisma().agency.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
 }
 
 export async function getNurseMarketplace(nurseId: string): Promise<NurseMarketplace> {
