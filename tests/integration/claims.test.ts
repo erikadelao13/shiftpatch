@@ -59,7 +59,9 @@ async function openShift(): Promise<string> {
 }
 
 const auditRowsFor = (resourceId: string) =>
-  prisma.auditEvent.findMany({ where: { resourceType: "shift", resourceId } });
+  prisma.auditEvent.findMany({
+    where: { resourceType: "shift", resourceId, action: "shift_claimed" },
+  });
 
 beforeAll(async () => {
   await assertSeededState();

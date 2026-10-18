@@ -29,6 +29,7 @@ enum CancellationReason {
 }
 
 enum AuditAction {
+  shift_posted
   shift_claimed
   shift_cancelled
   credential_updated

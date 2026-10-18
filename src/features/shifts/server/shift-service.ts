@@ -72,16 +72,28 @@ export async function createShift(
   if (!canPostShift(actor) || actor.agencyId === null) {
     throw new HttpError(403, "Only agency accounts can post shifts");
   }
-  const row = await getPrisma().shift.create({
-    data: {
-      id: `shift-${randomUUID()}`,
-      agencyId: actor.agencyId,
-      role: input.role,
-      date: new Date(input.date),
-      startTime: input.startTime,
-      endTime: input.endTime,
-    },
-    include: { agency: { select: { name: true } } },
+  const agencyId = actor.agencyId;
+  const id = `shift-${randomUUID()}`;
+  const row = await getPrisma().$transaction(async (tx) => {
+    const created = await tx.shift.create({
+      data: {
+        id,
+        agencyId,
+        role: input.role,
+        date: new Date(input.date),
+        startTime: input.startTime,
+        endTime: input.endTime,
+      },
+      include: { agency: { select: { name: true } } },
+    });
+    await recordAuditEvent(tx, {
+      actorId: actor.id,
+      action: "shift_posted",
+      resourceType: "shift",
+      resourceId: id,
+      metadata: { agencyId, role: input.role, date: input.date },
+    });
+    return created;
   });
   return toShiftDTO(row);
 }
