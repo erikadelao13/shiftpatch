@@ -44,7 +44,7 @@ Non-goals:
 
 The marketplace already posts to `POST /api/shifts/:id/claim`, shows the server's message in `notification-banner`, keeps the claim button enabled for James, and calls `router.refresh()` afterwards. The route doesn't exist yet.
 
-`docs/exec-plans/active/2026-10-17-shift-listing-and-posting.md` still reads "Complete, pending owner review (uncommitted)", even though `15cb055` committed it.
+`docs/exec-plans/completed/2026-10-17-shift-listing-and-posting.md` was moved from `active/` in step 0; it had still read "Complete, pending owner review (uncommitted)" after `15cb055` committed it.
 
 **Requirements.** The spec ([../../ShiftPatch-Technical-Spec.md](../../ShiftPatch-Technical-Spec.md)) route 4: an empty body, the nurse identified by the token, the nine-key DTO, and the exact 403 message. The banner's success and error messages share one test ID and are told apart by their content.
 

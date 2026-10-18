@@ -1,6 +1,6 @@
 # Shift listing and agency posting
 
-Status: Complete, pending owner review (uncommitted)
+Status: Complete
 Owner: Erika De LA O (decisions) / agent (implementation)
 Created: 2026-10-17
 
