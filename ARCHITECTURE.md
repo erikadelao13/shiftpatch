@@ -1,6 +1,6 @@
 # ShiftPatch Architecture
 
-> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). The audit view and timesheets are pending.
+> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). The audit log UI is built on sample events (TD-17); its data, the admin audit route and timesheets are pending.
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
@@ -81,6 +81,7 @@ src/
         layout.tsx
         page.tsx                # reads every shift and every agency from the database
         error.tsx               # inline error with "Try again" (retry())
+        audit/page.tsx          # audit log UI, on sample events until the audit plan (TD-17)
       nurse/                    # implemented: sidebar shell, marketplace, claim and My shifts UI
       agency/                   # implemented: sidebar shell and shift board UI
         layout.tsx
@@ -127,7 +128,9 @@ src/
       document.ts               # implemented: detectDocumentType, cleanFileName, contentDisposition, formatFileSize (no server-only; the UI shares it)
       server/credential-service.ts   # implemented: getCredentialExpiry, getCredentialRecord, saveCredential, getCredentialDocument
     audit/
-      components/
+      components/               # implemented: audit log page and table
+      describe-event.ts         # implemented: action labels and details for the table
+      sample-events.ts          # stand-in until AuditEvent rows are read (TD-17)
       server/audit-service.ts   # implemented: recordAuditEvent, transaction client only
     timesheets/
       components/

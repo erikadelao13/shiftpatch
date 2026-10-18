@@ -79,6 +79,8 @@ These are implementation tokens chosen to reproduce the approved direction. Appl
 | `--color-danger-text` | `#A13227` | Errors and destructive actions |
 | `--color-neutral-bg` | `#EDF0ED` | Cancelled and neutral badges |
 | `--color-neutral-text` | `#536058` | Neutral badge text |
+| `--color-info-bg` | `#E1E9F2` | Nurse avatars in the audit log |
+| `--color-info-text` | `#34506B` | Initials on `--color-info-bg` |
 
 Gold is decorative and should not be used for small text on white. Status badges always include words; color alone never communicates status. Visible input boundaries, focus indicators, and interactive icons must have sufficient contrast for their context. Verify final rendered foreground/background combinations before release.
 
@@ -108,6 +110,8 @@ Gold is decorative and should not be used for small text on white. Status badges
   --color-danger-text: #a13227;
   --color-neutral-bg: #edf0ed;
   --color-neutral-text: #536058;
+  --color-info-bg: #e1e9f2;
+  --color-info-text: #34506b;
 
   --font-ui: "Inter", system-ui, sans-serif;
   --font-display: "DM Serif Display", Georgia, serif;
@@ -307,6 +311,20 @@ Omitted because they have no working destination yet: the Shifts, Nurse roster, 
 States: a file is checked as soon as it is chosen ("Choose a PDF, JPG or PNG file.", "Choose a file of 4 MB or less.", or "This file is empty."). Saving with a field missing shows each field's message, focuses the first invalid field, and sends nothing. While a save is pending, every control is disabled and the button reads "Saving…". A failure shows the server's message in a `role="alert"` `notification-banner` above the button and keeps the file and date. A success refreshes the page, clears the form, and reads "Credential saved. Your expiry date is now <date>." in a `role="status"` banner. A date before today is rejected before sending with "Expiry date must be today or later."; "today" comes from the server, not the device clock. Leaving the page clears the success banner, so a returning nurse never sees an old "Credential saved" (Activity keeps the page mounted; the form resets its notice in a `useLayoutEffect` cleanup).
 
 Deviations from the mockup: the size limit reads 4 MB, not 5 MB (ARCHITECTURE §9). The banner has no right-hand "Valid" pill, because the shared banner's title already names the state and the card repeats it. The footer "Only you and authorized users can access your document." is omitted, because nothing defines who besides the nurse may read the document. After a client navigation, Next.js keeps the previous page mounted but hidden (`<Activity>`), so the marketplace's `credential-status` banner is still in the DOM on this page. Scope e2e locators to visible elements.
+
+**Implemented (2026-10-18): admin audit log UI, on sample events.** `src/app/(workspace)/admin/audit/` follows the approved audit log mockup. The admin sidebar now uses `SidebarNav` with "Shift overview" and "Audit log" (document icon), so `aria-current` follows the route. The page reads "Workspace / Audit log", "A clear record of every change." and "Review actions across both agencies and nurse accounts.", with the overview's secondary Refresh ("Audit log refreshed." in a polite status) and the same silent refresh when the tab becomes visible. An "Audit log" panel ("Successful actions, recorded as they happen." and an event count) holds one `<table data-testid="audit-log-table">`: When (UTC date over 24-hour time), Actor (initials avatar, name and role label; nurses use the `info` avatar, agencies sage, the admin neutral), Action (icon and label), Record (the resource ID in a code pill that wraps) and Details. The footer reads "Showing N events" and "Times in UTC": event times are real instants, unlike facility-local shift times. A sage "Read-only history" banner closes the page. The five columns need about 900px, so below `xl` each row stacks into a card: action and record, then details, then actor and time. Labels and details come from `describeAuditEvent` (`src/features/audit/describe-event.ts`):
+
+| Event | Label | Details |
+| --- | --- | --- |
+| `shift_posted` | Shift posted | Role · date · Open |
+| `shift_claimed` | Shift claimed | Open → Filled |
+| `shift_cancelled`, in advance | Assignment cancelled | In advance · {nurse} unassigned · Filled → Open |
+| `shift_cancelled`, no-show | No-show reported | {nurse} unassigned · Filled → Open |
+| `credential_updated` | Credential replaced, or Credential added when there was no previous expiry | Expiry: {previous} → {new} |
+
+"{nurse} unassigned" is left out when nurses cancel their own claim. Empty state: "No events recorded yet." A failed load shows `admin/audit/error.tsx`: "We couldn't load the audit log." with "Try again".
+
+The page renders the mockup's five events from `src/features/audit/sample-events.ts`, not `AuditEvent` rows (TD-17). There is no `shift_posted` action yet (TD-15), and a credential event's `resourceId` is the `Credential` UUID while the Record column shows the nurse ID, as the mockup does; the audit plan settles that mapping. Deviation from the mockup: the footer reads "Times in UTC" rather than "UTC".
 
 ## 8. Shared component behavior
 
