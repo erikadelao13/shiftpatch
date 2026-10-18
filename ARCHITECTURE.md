@@ -1,6 +1,6 @@
 # ShiftPatch Architecture
 
-> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). The credential upload page is built (§9) but its route is not, so saving cannot succeed yet. The audit view and timesheets are pending.
+> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). The audit view and timesheets are pending.
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
@@ -28,7 +28,7 @@ This is a design for the assessment, not evidence of production healthcare compl
 | Persistence | Neon Postgres through Prisma | Persistent hosted data, migrations, and transactional writes |
 | Validation | Zod at HTTP boundaries | Validate untrusted input at runtime |
 | Authentication | Self-managed: `node:crypto` scrypt password hashes, HS256 JWTs signed with `jose`, revocable `ApiSession` rows | One token serves both the required email/password-to-token endpoint and the browser, with no second identity provider (§7, `docs/decisions.md`) |
-| Credential files | Private Vercel Blob; metadata in Postgres | Separate private document bytes from relational records |
+| Credential files | Postgres, in a separate `CredentialDocument` table (owner decision 2026-10-18); a 4 MB limit | Keeps the document with its expiry in one transaction and needs no storage provider. The bytes never load with the banner or the claim check. Move to object storage before real use (TD-16) |
 | Tests | Vitest; React Testing Library where useful; Playwright | Rules, real database integration, and browser flows |
 | Automation | GitHub Actions and pnpm scripts | Repeatable checks locally and in CI |
 | Hosting | Vercel | Deploy the existing Next.js application |
@@ -50,7 +50,7 @@ flowchart TD
     HTTP --> Services["Feature services and policies"]
     Auth --> DB["Neon Postgres"]
     Services --> DB
-    Services --> Files["Private credential storage"]
+    Services --> Files["CredentialDocument table"]
 ```
 
 - Route Handlers are HTTP adapters: parse, validate, identify the actor, call a service, and serialize a result.
@@ -94,8 +94,8 @@ src/
       shifts/[id]/claim/route.ts            # implemented
       shifts/[id]/cancel/route.ts           # implemented
       agencies/[agencyId]/shifts/route.ts   # implemented
-      credentials/route.ts
-      credentials/[id]/file/route.ts
+      credentials/route.ts                   # implemented: POST upload
+      credentials/document/route.ts          # implemented: GET the signed-in nurse's own document
       admin/audit/route.ts
       timesheets/route.ts
   features/
@@ -123,8 +123,9 @@ src/
     credentials/
       status.ts                 # implemented: getCredentialStatus, todayIsoDate
       components/               # implemented: credential banner, upload form, current credential card
-      schemas.ts                # implemented: credentialFileSchema and credentialUploadSchema, for the form and the planned route
-      server/credential-service.ts   # implemented: getCredentialExpiry reads the Credential table
+      schemas.ts                # implemented: credentialFileSchema and credentialUploadSchema, for the form and the route
+      document.ts               # implemented: detectDocumentType, cleanFileName, contentDisposition, formatFileSize (no server-only; the UI shares it)
+      server/credential-service.ts   # implemented: getCredentialExpiry, getCredentialRecord, saveCredential, getCredentialDocument
     audit/
       components/
       server/audit-service.ts   # implemented: recordAuditEvent, transaction client only
@@ -199,10 +200,11 @@ Use semantic forms and tables, associated labels, keyboard-operable dialogs, vis
 | User | Fixed sample ID, name, unique email, role, optional agency membership, `passwordHash` (scrypt; never serialized into a response or log) |
 | ApiSession | Revocable session ID (the token's `sid`), application user, expiry, optional revocation time |
 | LoginAttempt | One failed sign-in: submitted email and time. Drives the throttle |
-| Credential | Nurse owner, expiry date, optional private file reference, upload metadata. **Implemented (2026-10-17):** `Credential` holds one row per nurse (`nurseId` unique, cascade on user delete) with a date-only `expiresOn`; it has no file columns yet, which the upload plan adds to the same row |
+| Credential | Nurse owner, expiry date, optional private file reference, upload metadata. **Implemented (2026-10-17):** `Credential` holds one row per nurse (`nurseId` unique, cascade on user delete) with a date-only `expiresOn`; its document is a separate row in `CredentialDocument` |
+| CredentialDocument | One private document per credential. **Implemented (2026-10-18):** `credentialId` is the primary key and cascades on delete, with `fileName`, `type` (`CredentialDocumentType`: `pdf`, `jpeg`, `png`), `sizeBytes`, `content` (`Bytes`) and `uploadedAt`, which is set on every save so a replaced file shows its own date. Hand-written CHECKs: `sizeBytes` equals `octet_length(content)`, is 1 to 4194304, and `fileName` is 1 to 255 characters; `content` is `STORAGE EXTERNAL` because the formats are already compressed. A separate table keeps the bytes out of the banner, the claim check and the page |
 | Shift | Agency, role (`RN` or `LPN`), facility-local date/time, status (`open` or `filled`), current claimed nurse. **Implemented (2026-10-17):** `Shift` with `ShiftRole` and `ShiftStatus` enums, `date` as a date-only column, times as `HH:MM` `CHAR(5)`, and an index on `agencyId, date, startTime`. Hand-written CHECK constraints in the migration: an open shift has no nurse and a filled shift has one, both times are valid 24-hour `HH:MM`, and start differs from end. IDs are `shift-<uuid>`, generated by the service; a `shift-N` sequence default made Prisma generate a drift migration on every run |
 | Cancellation | Shift, reason, previous nurse, actor, timestamp. **Implemented (2026-10-17):** `Cancellation` with a `CancellationReason` enum (`advance`, `no_show`: a Prisma enum value must be an identifier, so the presenter maps it to `"no-show"` for the API), an index on `shiftId, createdAt`, and `CASCADE` from its shift so test cleanup works unchanged (the app never deletes shifts). Both user foreign keys are `RESTRICT`. A shift that is claimed and cancelled again keeps every row. Re-seeding deletes the three seeded shifts' cancellations so they return to their trial-start state |
-| AuditEvent | Actor, action, resource, timestamp, safe event metadata. **Implemented (2026-10-17):** `AuditEvent` with an `AuditAction` enum (`shift_claimed` and `shift_cancelled`), `resourceType` and `resourceId` as plain strings with no foreign key so history outlives the resource, and JSON `metadata` (`{ agencyId }` for a claim; `{ agencyId, reason, previousNurseId }` for a cancellation, with `reason` in the API spelling). The actor is a foreign key with `RESTRICT`, so tests delete audit rows before their users |
+| AuditEvent | Actor, action, resource, timestamp, safe event metadata. **Implemented (2026-10-17):** `AuditEvent` with an `AuditAction` enum (`shift_claimed`, `shift_cancelled` and, since 2026-10-18, `credential_updated`), `resourceType` and `resourceId` as plain strings with no foreign key so history outlives the resource, and JSON `metadata` (`{ agencyId }` for a claim; `{ agencyId, reason, previousNurseId }` for a cancellation, with `reason` in the API spelling; `{ previousExpiresOn, expiresOn }` for a credential save, never the file name). The actor is a foreign key with `RESTRICT`, so tests delete audit rows before their users |
 | Timesheet | Assignment reference, planned duration, submission state, nullable actual hours |
 
 Retain seeded expiry eligibility even when a fixture has no uploaded file. File presence is not a new prerequisite for claiming unless the packet is updated.
@@ -221,7 +223,7 @@ Load the two agencies, two nurses, administrator, credentials, and three shifts 
 | shift-2 | agency-a | 2026-10-03 | 07:00 | 19:00 | filled | nurse-1 |
 | shift-3 | agency-b | 2026-10-04 | 19:00 | 07:00 | open | null |
 
-**Implemented (2026-10-17):** `pnpm db:seed` upserts the two agencies and the five accounts idempotently (`prisma/fixtures.ts`, `prisma/seed.ts`) and hashes the shared fixture password `Trial2026!`, which is public, not a secret. It refuses to run unless `NEON_BRANCH=dev`. The three spec shifts are upserted by ID too (2026-10-17); re-seeding puts each of them back to its trial-start state and leaves every other shift alone. The two credentials are upserted by `nurseId` (2026-10-17): `nurse-1` expires 2027-01-01 and `nurse-2` 2026-06-01, and re-seeding resets both. After a test run the dev branch holds 3 `Shift`, 2 `Credential` and 0 `AuditEvent` rows. The rest of the fixtures arrive with their feature plans. The fixed local IDs (`agency-a`, `agency-b`, `nurse-1`, `nurse-2`, `admin-1`) are the primary keys, and an agency login uses its agency ID as its user ID.
+**Implemented (2026-10-17):** `pnpm db:seed` upserts the two agencies and the five accounts idempotently (`prisma/fixtures.ts`, `prisma/seed.ts`) and hashes the shared fixture password `Trial2026!`, which is public, not a secret. It refuses to run unless `NEON_BRANCH=dev`. The three spec shifts are upserted by ID too (2026-10-17); re-seeding puts each of them back to its trial-start state and leaves every other shift alone. The two credentials are upserted by `nurseId` (2026-10-17): `nurse-1` expires 2027-01-01 and `nurse-2` 2026-06-01, and re-seeding resets both. After a test run the dev branch holds 3 `Shift`, 2 `Credential`, 0 `CredentialDocument` and 0 `AuditEvent` rows; re-seeding also deletes any document the two fixture nurses have. The rest of the fixtures arrive with their feature plans. The fixed local IDs (`agency-a`, `agency-b`, `nurse-1`, `nurse-2`, `admin-1`) are the primary keys, and an agency login uses its agency ID as its user ID.
 
 Keep the public fixture credentials distinct from `AUTH_JWT_SECRET` and the database credentials. Never create users from an untrusted login request.
 
@@ -343,7 +345,8 @@ These rules fill gaps in the packet and must be recorded as assumptions:
 | Cancel in advance | Own claim | Own agency's filled shift | Any filled shift |
 | Record no-show | No | Own agency's filled shift | Any filled shift |
 | Read agency-scoped shifts | No | Own agency only | Any agency |
-| Upload credential | Self only | No | No additional capability required |
+| Upload credential | Self only | No | No |
+| Download credential document | Own document only | No | No |
 | Read audit log | No | No | Yes |
 | Read timesheets | Own assignments | Own agency's assignments | All |
 
@@ -382,9 +385,16 @@ A claim/cancel transaction either persists its state change and audit history to
 
 Authenticate ownership, enforce a modest documented size limit, allow only supported document types, and validate bytes where practical. Generate server-side storage names rather than trusting uploaded paths. Store the file privately; serve downloads through an authorized endpoint. Keep file metadata and expiry in Postgres [F1].
 
-**Implemented (2026-10-18): the upload page, not the route.** `/nurse/credentials` validates with `credentialUploadSchema` and then posts `multipart/form-data` to `POST /api/credentials`, with the document in `file` and the date in `expiresOn` (`YYYY-MM-DD`). Neither the route nor the `Credential` file columns exist yet, so every save currently fails with "Something went wrong. Try again." and changes nothing. `apiFetch` sets `Content-Type: application/json` only for a string body, so the browser can write the multipart boundary. Proposals, not yet reviewed by the owner: the route path and field names; PDF, JPEG or PNG only; a 4 MB limit, because a Vercel Function rejects request bodies over 4.5 MB and a direct-to-Blob client upload would add a token route; the route should run `credentialUploadSchema` again and check the file's leading bytes, since the browser's MIME type comes from the file name.
+**Implemented (2026-10-18).** `/nurse/credentials` validates with `credentialUploadSchema` and posts `multipart/form-data` to `POST /api/credentials`, with the document in `file` and the date in `expiresOn` (`YYYY-MM-DD`). `apiFetch` sets `Content-Type: application/json` only for a string body, so the browser can write the multipart boundary.
 
-Object storage and Postgres do not share a transaction. If metadata persistence fails after upload, attempt deletion of the new blob. When replacing a file, commit the new reference before removing the old blob. Report cleanup failures without leaking document contents.
+The route contract is an agent proposal. The owner decided on 2026-10-18 that documents live in Postgres, that past dates are rejected, that only the nurse can download and that saves are audited (`docs/decisions.md`), so there is no storage provider, no blob token and no cleanup after a failed save: the `Credential` change, the `CredentialDocument` row and the audit event commit or roll back together.
+
+- **Save.** `POST /api/credentials` returns `200` with `{ nurseId, expiresOn, status, document: { fileName, contentType, sizeBytes, uploadedAt } }` and `Cache-Control: no-store`. A second save replaces both the date and the document. Errors are `{ error }` with `no-store`, checked in this order: `401` (and `403` "Cross-origin request rejected" for a cookie POST from another origin); `403` "Only nurses can upload credentials"; `413` "Choose a file of 4 MB or less." from `Content-Length` before the body is read (best effort, since a chunked request has no header); `400` "Send the document and expiry date as multipart/form-data."; `400` with the schema's first message; `400` "Expiry date must be today or later." (today, by the UTC calendar date, is accepted; owner decision); `400` "Choose a PDF, JPG or PNG file." when the leading bytes are not a PDF, JPEG or PNG. The detected type is stored and the browser's declared type is not trusted. A rejected request writes nothing.
+- **Limit.** 4 MB, because a Vercel Function rejects request bodies over 4.5 MB.
+- **Download.** `GET /api/credentials/document` returns the signed-in nurse's own file with its stored type, `Content-Disposition: attachment` (ASCII fallback plus `filename*`), `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`. `401`, `403` "Only nurses can view credential documents" and `404` "No document on file". The path has no ID, so no request can name another nurse's file. Agency and admin access is undefined and not built.
+- **Transaction.** `saveCredential` locks the nurse's `User` row (`FOR NO KEY UPDATE`), which serializes saves for the same nurse, first saves included, and does not block claims (`FOR KEY SHARE`). Inside it: read the previous date, upsert the `Credential`, upsert the `CredentialDocument` with a fresh `uploadedAt`, and write one `credential_updated` audit event with `{ previousExpiresOn, expiresOn }`. The transaction timeout is 15 s, because the default 5 s can expire while 4 MB goes to Neon. Saving touches no shift.
+- **Proof.** `tests/integration/credentials.test.ts` covers replacement, the audit chain, an expired nurse claiming after a save, every refusal writing nothing, and five rounds of two concurrent first saves (both `200`, one `Credential`, one `CredentialDocument`, chained audit rows). `e2e/credentials-api.spec.ts` covers the contract and `e2e/credentials-ui.spec.ts` the real flow.
+- **Trust.** Expiry is self-reported. The upload does not verify the document or the license.
 
 ### Audit
 
@@ -432,7 +442,7 @@ Preserve IDs during refactors. Repeated row IDs are intentional where specified;
 | Supporting UI | File/expiry controls work; audit/timesheet tables show real data or clear empty states |
 | Live smoke | Public URL opens, seeded login works, one main flow persists across reloads |
 
-Integration tests run against the Neon `dev` branch, which `tests/setup.ts` enforces through `NEON_BRANCH`. No test may reset or truncate it: tests create rows with unique IDs and delete only those. Unit tests mock the session lookup at its narrow boundary (`resolveSession`) to test the guard's decisions; the integration tests cover the real database path. Mock external blob operations at the storage boundary for automated tests; perform one authorized deployed upload/download smoke check. Do not claim concurrency correctness from a mocked repository test.
+Integration tests run against the Neon `dev` branch, which `tests/setup.ts` enforces through `NEON_BRANCH`. No test may reset or truncate it: tests create rows with unique IDs and delete only those. Unit tests mock the session lookup at its narrow boundary (`resolveSession`) to test the guard's decisions; the integration tests cover the real database path. Credential documents live in Postgres, so the upload tests run against the dev database with no mocked storage; perform one authorized deployed upload/download smoke check. Do not claim concurrency correctness from a mocked repository test.
 
 Browser tests mutate data. Each spec deletes only the rows it created (`e2e/support.ts`); never run resets against the evaluator's shared deployment.
 
@@ -458,7 +468,7 @@ After a small change, run the tests relevant to that change. Run the complete re
 
 ## 12. Deployment and operational boundaries
 
-Deploy a minimal working version early. Use server-only environment variables for the database, `AUTH_JWT_SECRET`, and the private blob token. Keep secrets out of browser bundles, git history, and build logs.
+Deploy a minimal working version early. Use server-only environment variables for the database and `AUTH_JWT_SECRET`. Credential documents live in Postgres, so no blob token is needed. Keep secrets out of browser bundles, git history, and build logs.
 
 Validate browser sign-in and the direct API login from the final public URL before building the remaining flows. The fixture users are synthetic. The deployed database must be seeded deliberately: `pnpm db:seed` refuses production, and the deployment plan adds the explicit override. A user the database does not hold cannot sign in.
 
@@ -522,6 +532,6 @@ Official guidance checked on October 16, 2026 (Clerk sources removed 2026-10-17 
 - **[D1] Neon: Connect from Prisma to Neon.** [Documentation](https://neon.com/docs/guides/prisma)
 - **[D2] Prisma: Transactions.** [Documentation](https://www.prisma.io/docs/orm/fundamentals/transactions)
 - **[D3] Neon agent skill `neon-postgres`: driver choice, and pooled versus direct connections.** [Source](https://github.com/neondatabase/agent-skills/tree/main/skills/neon-postgres)
-- **[F1] Vercel: Private Blob storage.** [Documentation](https://vercel.com/docs/vercel-blob/private-storage)
+- **[F1] Vercel: Private Blob storage** (not used; replaced by Postgres storage on 2026-10-18). [Documentation](https://vercel.com/docs/vercel-blob/private-storage)
 
 Provider-specific options may change. Resolve syntax against the installed versions when implementing. Update this document when an architectural decision changes; keep short-lived progress in commits and acceptance notes.
