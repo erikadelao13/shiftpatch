@@ -274,6 +274,8 @@ This is supporting information, not the enforcement mechanism. Claim eligibility
 
 Display the timezone explicitly near the table. Use the configured facility or schedule timezone; the mockup’s Eastern Time label is illustrative. Do not silently reinterpret shift times using the viewer’s device timezone.
 
+**Implemented (2026-10-17), UI only.** The agency overview is built in `src/app/(workspace)/agency/` and `src/features/shifts/`, with the post-a-shift side panel. Shifts are the spec's sample data held in client state, so a posted shift disappears on reload until persistence lands. Omitted because they have no working destination yet: the Shifts, Nurse roster, Timesheets and Audit log nav items, Help, the date-range and filter controls, "View all shifts", and the Rate and Details columns (shifts have no rate in the data model). Coverage and hours are computed from the visible shifts; there is no date-range scope.
+
 ## 8. Shared component behavior
 
 | Component | Treatment and interaction |

@@ -76,11 +76,14 @@ src/
     layout.tsx
     providers.tsx
     login/page.tsx              # implemented
-    (workspace)/                # implemented: signed-in header, sign-out
-      layout.tsx
-      nurse/page.tsx            # placeholder until the shifts plan
-      agency/page.tsx           # placeholder until the shifts plan
-      admin/page.tsx            # placeholder until the shifts plan
+    (workspace)/
+      (standard)/               # implemented: signed-in header, sign-out
+        layout.tsx
+        nurse/page.tsx          # placeholder until the shifts plan
+        admin/page.tsx          # placeholder until the shifts plan
+      agency/                   # implemented: sidebar shell and shift board UI
+        layout.tsx
+        page.tsx                # UI only: sample shifts, not the database yet
     api/
       auth/login/route.ts       # implemented
       auth/me/route.ts          # implemented (proposal, not a spec route)
