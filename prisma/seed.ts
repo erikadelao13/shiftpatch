@@ -43,6 +43,10 @@ async function main() {
       });
     }
 
+    await prisma.cancellation.deleteMany({
+      where: { shiftId: { in: fixtureShifts.map((shift) => shift.id) } },
+    });
+
     for (const shift of fixtureShifts) {
       const data = { ...shift, date: new Date(shift.date) };
       await prisma.shift.upsert({

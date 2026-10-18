@@ -23,8 +23,14 @@ enum ShiftStatus {
   filled
 }
 
+enum CancellationReason {
+  advance
+  no_show
+}
+
 enum AuditAction {
   shift_claimed
+  shift_cancelled
 }
 
 model Agency {
@@ -46,6 +52,9 @@ model User {
   claimedShifts Shift[]
   credential    Credential?
   auditEvents   AuditEvent[]
+
+  cancelledAssignments  Cancellation[] @relation("CancelledNurse")
+  cancellationsRecorded Cancellation[] @relation("CancellationActor")
 }
 
 model ApiSession {
@@ -68,19 +77,34 @@ model LoginAttempt {
 }
 
 model Shift {
-  id          String      @id
-  agencyId    String
-  agency      Agency      @relation(fields: [agencyId], references: [id])
-  role        ShiftRole
-  date        DateTime    @db.Date
-  startTime   String      @db.Char(5)
-  endTime     String      @db.Char(5)
-  status      ShiftStatus @default(open)
-  claimedById String?
-  claimedBy   User?       @relation(fields: [claimedById], references: [id])
-  createdAt   DateTime    @default(now())
+  id            String         @id
+  agencyId      String
+  agency        Agency         @relation(fields: [agencyId], references: [id])
+  role          ShiftRole
+  date          DateTime       @db.Date
+  startTime     String         @db.Char(5)
+  endTime       String         @db.Char(5)
+  status        ShiftStatus    @default(open)
+  claimedById   String?
+  claimedBy     User?          @relation(fields: [claimedById], references: [id])
+  createdAt     DateTime       @default(now())
+  cancellations Cancellation[]
 
   @@index([agencyId, date, startTime])
+}
+
+model Cancellation {
+  id              String             @id @default(uuid())
+  shiftId         String
+  shift           Shift              @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  reason          CancellationReason
+  previousNurseId String
+  previousNurse   User               @relation("CancelledNurse", fields: [previousNurseId], references: [id])
+  actorId         String
+  actor           User               @relation("CancellationActor", fields: [actorId], references: [id])
+  createdAt       DateTime           @default(now())
+
+  @@index([shiftId, createdAt])
 }
 
 model Credential {
