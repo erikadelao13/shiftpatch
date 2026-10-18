@@ -31,6 +31,13 @@ enum CancellationReason {
 enum AuditAction {
   shift_claimed
   shift_cancelled
+  credential_updated
+}
+
+enum CredentialDocumentType {
+  pdf
+  jpeg
+  png
 }
 
 model Agency {
@@ -113,6 +120,17 @@ model Credential {
   nurse     User     @relation(fields: [nurseId], references: [id], onDelete: Cascade)
   expiresOn DateTime @db.Date
   updatedAt DateTime @updatedAt
+  document  CredentialDocument?
+}
+
+model CredentialDocument {
+  credentialId String                 @id
+  credential   Credential             @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  fileName     String
+  type         CredentialDocumentType
+  sizeBytes    Int
+  content      Bytes
+  uploadedAt   DateTime
 }
 
 model AuditEvent {

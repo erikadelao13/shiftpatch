@@ -56,6 +56,10 @@ async function main() {
       });
     }
 
+    await prisma.credentialDocument.deleteMany({
+      where: { credential: { nurseId: { in: fixtureCredentials.map((c) => c.nurseId) } } },
+    });
+
     for (const credential of fixtureCredentials) {
       const data = { ...credential, expiresOn: new Date(credential.expiresOn) };
       await prisma.credential.upsert({
