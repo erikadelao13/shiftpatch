@@ -32,14 +32,19 @@ export function sessionIdOf(token: string): string | undefined {
 export async function deleteOwnRows(rows: {
   sessionIds?: string[];
   emails?: string[];
+  shiftIds?: string[];
 }): Promise<void> {
   const sessionIds = rows.sessionIds ?? [];
   const emails = rows.emails ?? [];
-  if (sessionIds.length === 0 && emails.length === 0) return;
+  const shiftIds = rows.shiftIds ?? [];
+  if (sessionIds.length === 0 && emails.length === 0 && shiftIds.length === 0) return;
 
   assertDevBranch("clean up end-to-end test rows");
   const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED });
   try {
+    if (shiftIds.length > 0) {
+      await pool.query('delete from "Shift" where id = any($1::text[])', [shiftIds]);
+    }
     if (sessionIds.length > 0) {
       await pool.query('delete from "ApiSession" where id = any($1::text[])', [sessionIds]);
     }
