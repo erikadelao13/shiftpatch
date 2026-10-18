@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { formatHours, totalScheduledHours } from "./hours";
+import { formatHours, timesheetTotals, totalScheduledHours } from "./hours";
+import type { TimesheetEntry } from "./types";
 
 describe("formatHours", () => {
   it("shows whole hours without decimals", () => {
@@ -27,5 +28,36 @@ describe("totalScheduledHours", () => {
 
   it("is zero with no shifts", () => {
     expect(totalScheduledHours([])).toBe(0);
+  });
+});
+
+function entry(overrides: Partial<TimesheetEntry>): TimesheetEntry {
+  return {
+    id: "shift-a",
+    shiftId: "shift-a",
+    role: "RN",
+    agencyName: "Agency A",
+    date: "2026-10-03",
+    startTime: "07:00",
+    endTime: "19:00",
+    nurseName: "Maria Lopez",
+    state: "assigned",
+    ...overrides,
+  };
+}
+
+describe("timesheetTotals", () => {
+  it("leaves history rows out of the assigned count and scheduled hours", () => {
+    expect(
+      timesheetTotals([
+        entry({ id: "c1", state: "cancelled" }),
+        entry({ id: "c2", state: "no-show" }),
+        entry({ id: "shift-a" }),
+      ]),
+    ).toEqual({ assigned: 1, history: 2, scheduledHours: 12 });
+  });
+
+  it("is zero with no entries", () => {
+    expect(timesheetTotals([])).toEqual({ assigned: 0, history: 0, scheduledHours: 0 });
   });
 });
