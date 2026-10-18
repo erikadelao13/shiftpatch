@@ -69,6 +69,45 @@ async function expectTotalsAgree(page: Page) {
   );
 }
 
+test.describe("the admin audit log", () => {
+  test("opens from the sidebar and lists its events in one audit table", async ({ page }) => {
+    await signInAsAdmin(page);
+    await page
+      .getByRole("navigation", { name: "Administration" })
+      .getByRole("link", { name: "Audit log" })
+      .click();
+
+    await expect(page).toHaveURL(/\/admin\/audit$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "A clear record of every change." }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Audit log" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "Shift overview" })).not.toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    const table = page.getByTestId("audit-log-table");
+    await expect(table).toHaveCount(1);
+    const rows = await table.locator("tbody tr").count();
+    expect(rows).toBeGreaterThan(0);
+    await expect(page.getByText(`Showing ${rows} ${rows === 1 ? "event" : "events"}`)).toBeVisible();
+  });
+
+  test("stacks into cards at 375px with no page-wide horizontal scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await signInAsAdmin(page);
+    await page.goto("/admin/audit");
+
+    await expect(page.getByTestId("audit-log-table")).toBeVisible();
+    await expect(page.getByTestId("audit-log-table").locator("thead")).toBeHidden();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
+
 test.describe("the admin shift overview", () => {
   test("lists the seeded shifts with agency, nurse and one status badge each", async ({ page }) => {
     await signInAsAdmin(page);

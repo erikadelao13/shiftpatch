@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 
 import { signOut } from "@/features/auth/actions";
 import { requireRole } from "@/features/auth/server/current-user";
-import { GridIcon } from "@/shared/ui/icons";
+import { DocumentIcon, GridIcon } from "@/shared/ui/icons";
 import { Sidebar } from "@/shared/ui/sidebar";
+import { SidebarNav } from "@/shared/ui/sidebar-nav";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
@@ -27,20 +27,13 @@ async function AdminSidebar() {
       roleLabel="Administrator"
       signOutAction={signOut}
       nav={
-        <nav aria-label="Administration">
-          <ul className="flex flex-col gap-1">
-            <li>
-              <Link
-                href="/admin"
-                aria-current="page"
-                className="flex h-11 items-center gap-3 rounded-control bg-sage px-3 text-base font-medium text-brand-800"
-              >
-                <GridIcon />
-                Shift overview
-              </Link>
-            </li>
-          </ul>
-        </nav>
+        <SidebarNav
+          label="Administration"
+          items={[
+            { href: "/admin", label: "Shift overview", icon: <GridIcon /> },
+            { href: "/admin/audit", label: "Audit log", icon: <DocumentIcon /> },
+          ]}
+        />
       }
     />
   );
