@@ -28,6 +28,14 @@ Remove the Cancelled tab and badge. A cancellation reopens the shift and is kept
 
 Both a database enum and a zod enum; any other role gets `400`. Adding a role takes one migration.
 
+### 2026-10-18: CI on the shared `dev` branch, Vercel deploys `main` only
+
+- **CI tests run on the shared Neon `dev` branch.** CI test jobs are queued so they never overlap each other. A CI run can still collide with a local run at the same moment, and that risk is accepted. A throwaway branch per run was rejected because it needs a broad `NEON_API_KEY` secret and changes to the `NEON_BRANCH` guard.
+- **Vercel's Git integration deploys `main` only, with no preview deployments.** Deployment Checks hold the production promotion until CI passes. Neon preview branches and deploying from GitHub Actions were rejected for now.
+- **Secrets reach GitHub and Vercel only over stdin**, piped by `gh` and the Vercel CLI from the local env files. They never appear in a command, in output, or in the repository. The production `AUTH_JWT_SECRET` is generated straight into Vercel.
+
+See [exec-plans/active/2026-10-18-ci-and-vercel-deployment.md](exec-plans/active/2026-10-18-ci-and-vercel-deployment.md).
+
 ## Agent defaults
 
 Chosen by the implementing agent where the spec was silent. Not yet reviewed by the owner; treat them as defaults and change them with a dated entry.
