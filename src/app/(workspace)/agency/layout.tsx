@@ -1,11 +1,11 @@
-import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 
 import { signOut } from "@/features/auth/actions";
 import { requireRole } from "@/features/auth/server/current-user";
 import { getAgencyName } from "@/features/shifts/server/shift-service";
-import { HomeIcon } from "@/shared/ui/icons";
+import { HomeIcon, NoteIcon } from "@/shared/ui/icons";
 import { Sidebar } from "@/shared/ui/sidebar";
+import { SidebarNav } from "@/shared/ui/sidebar-nav";
 
 export default function AgencyLayout({ children }: { children: ReactNode }) {
   return (
@@ -29,20 +29,13 @@ async function AgencySidebar() {
       roleLabel="Agency"
       signOutAction={signOut}
       nav={
-        <nav aria-label="Agency">
-          <ul className="flex flex-col gap-1">
-            <li>
-              <Link
-                href="/agency"
-                aria-current="page"
-                className="flex h-11 items-center gap-3 rounded-control bg-sage px-3 text-base font-medium text-brand-800"
-              >
-                <HomeIcon />
-                Overview
-              </Link>
-            </li>
-          </ul>
-        </nav>
+        <SidebarNav
+          label="Agency"
+          items={[
+            { href: "/agency", label: "Overview", icon: <HomeIcon /> },
+            { href: "/agency/timesheets", label: "Timesheets", icon: <NoteIcon /> },
+          ]}
+        />
       }
     />
   );

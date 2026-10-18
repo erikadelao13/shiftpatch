@@ -2,7 +2,7 @@ import { Suspense, type ReactNode } from "react";
 
 import { signOut } from "@/features/auth/actions";
 import { requireRole } from "@/features/auth/server/current-user";
-import { DocumentIcon, GridIcon } from "@/shared/ui/icons";
+import { DocumentIcon, GridIcon, NoteIcon } from "@/shared/ui/icons";
 import { Sidebar } from "@/shared/ui/sidebar";
 import { SidebarNav } from "@/shared/ui/sidebar-nav";
 
@@ -31,6 +31,7 @@ async function AdminSidebar() {
           label="Administration"
           items={[
             { href: "/admin", label: "Shift overview", icon: <GridIcon /> },
+            { href: "/admin/timesheets", label: "Timesheets", icon: <NoteIcon /> },
             { href: "/admin/audit", label: "Audit log", icon: <DocumentIcon /> },
           ]}
         />

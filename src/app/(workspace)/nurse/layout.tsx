@@ -2,7 +2,7 @@ import { Suspense, type ReactNode } from "react";
 
 import { signOut } from "@/features/auth/actions";
 import { requireRole } from "@/features/auth/server/current-user";
-import { CalendarIcon, DocumentIcon, GridIcon } from "@/shared/ui/icons";
+import { CalendarIcon, DocumentIcon, GridIcon, NoteIcon } from "@/shared/ui/icons";
 import { Sidebar } from "@/shared/ui/sidebar";
 import { SidebarNav } from "@/shared/ui/sidebar-nav";
 
@@ -33,6 +33,7 @@ async function NurseSidebar() {
             { href: "/nurse", label: "Shift marketplace", icon: <GridIcon /> },
             { href: "/nurse#my-shifts", label: "My shifts", icon: <CalendarIcon /> },
             { href: "/nurse/credentials", label: "Credentials", icon: <DocumentIcon /> },
+            { href: "/nurse/timesheets", label: "Timesheets", icon: <NoteIcon /> },
           ]}
         />
       }

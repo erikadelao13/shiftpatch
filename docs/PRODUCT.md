@@ -187,6 +187,8 @@ Nurses may upload their own credentials. The administrator reads the cross-agenc
 - Retain historical assignment context after cancellation or reassignment.
 - Hours entry, approval, payroll, and billing are outside the committed lightweight view.
 
+> Note (2026-10-18): the owner decided against a `Timesheet` table and a timesheets API. The view is derived from shifts and cancellations. Its submission state shows as "Not recorded" because nothing can be submitted, and cancelled and no-show assignments are listed as history rows that are not counted in scheduled totals. See [decisions](decisions.md) and ARCHITECTURE §9.
+
 ## 8. Product acceptance criteria
 
 | ID | Acceptance |

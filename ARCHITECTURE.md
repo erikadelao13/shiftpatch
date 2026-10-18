@@ -1,6 +1,6 @@
 # ShiftPatch Architecture
 
-> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). Timesheets are pending.
+> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). the timesheet views for all three roles, derived from `Shift` and `Cancellation` with no recorded work (§5, §9). A `Timesheet` model and `GET /api/timesheets` were decided against on 2026-10-18.
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
@@ -97,7 +97,6 @@ src/
       agencies/[agencyId]/shifts/route.ts   # implemented
       credentials/route.ts                   # implemented: POST upload
       credentials/document/route.ts          # implemented: GET the signed-in nurse's own document
-      timesheets/route.ts
   features/
     auth/                       # implemented
       actions.ts                # signIn / signOut Server Actions
@@ -119,7 +118,7 @@ src/
       schedule.ts               # implemented: display helpers
       server/shift-service.ts   # implemented: Prisma calls live here, no repository layer
       server/shift-policy.ts    # implemented: canPostShift, canReadAgencyShifts, canClaimShift, credentialClaimError, canRecordNoShow, cancellationRefusal
-      server/shift-presenter.ts # implemented: toShiftDTO and toCancelledShiftDTO, explicit serializers; the only place that maps the database's `no_show` to the API's `"no-show"`
+      server/shift-presenter.ts # implemented: toShiftDTO and toCancelledShiftDTO, explicit serializers; the only place that maps the database's `no_show` to the API's spelling `"no-show"`
     credentials/
       status.ts                 # implemented: getCredentialStatus, todayIsoDate
       components/               # implemented: credential banner, upload form, current credential card
@@ -132,8 +131,11 @@ src/
       server/audit-presenter.ts # implemented: per-action metadata schemas, toAuditEntry (malformed metadata throws)
       server/audit-service.ts   # implemented: recordAuditEvent (transaction client only), listAuditEntries
     timesheets/
-      components/
-      server/
+      components/               # implemented: timesheet panel and table for all three roles
+      hours.ts                  # implemented: formatHours, totalScheduledHours, timesheetTotals
+      types.ts                  # implemented: TimesheetEntry (no server-only, client components import it)
+      server/timesheet-presenter.ts # implemented: toTimesheetEntries merges and orders assignments and history
+      server/timesheet-service.ts   # implemented: listTimesheetEntries(scope)
   shared/
     ui/
     client/api-client.ts        # implemented: apiFetch
@@ -178,7 +180,8 @@ Each feature owns its components, hooks, input schemas, public DTO types, and se
 | --- | --- |
 | Dialog open state, selected cancellation reason, form fields | Local React state |
 | Agency shift list | Server Component props, refreshed with `router.refresh()` after a post (proposal: feature query hooks once polling or cross-view invalidation is needed) |
-| Application user profile, audit rows, timesheets | Feature query hooks |
+| Application user profile | Feature query hooks |
+| Audit rows, timesheet entries | Server Component props, refreshed with `useServerRefresh` |
 | Roles, ownership, expiry, shift assignment | Server and database |
 | Browser sign-in/session lifecycle | The `shiftpatch_session` HttpOnly cookie, set by the `signIn` Server Action; the `ApiSession` row on the server |
 | API token | Returned in the body of `POST /api/auth/login` to direct API callers. The browser holds the same kind of token only in the HttpOnly cookie; page JavaScript never receives it |
@@ -207,13 +210,13 @@ Use semantic forms and tables, associated labels, keyboard-operable dialogs, vis
 | Shift | Agency, role (`RN` or `LPN`), facility-local date/time, status (`open` or `filled`), current claimed nurse. **Implemented (2026-10-17):** `Shift` with `ShiftRole` and `ShiftStatus` enums, `date` as a date-only column, times as `HH:MM` `CHAR(5)`, and an index on `agencyId, date, startTime`. Hand-written CHECK constraints in the migration: an open shift has no nurse and a filled shift has one, both times are valid 24-hour `HH:MM`, and start differs from end. IDs are `shift-<uuid>`, generated by the service; a `shift-N` sequence default made Prisma generate a drift migration on every run |
 | Cancellation | Shift, reason, previous nurse, actor, timestamp. **Implemented (2026-10-17):** `Cancellation` with a `CancellationReason` enum (`advance`, `no_show`: a Prisma enum value must be an identifier, so the presenter maps it to `"no-show"` for the API), an index on `shiftId, createdAt`, and `CASCADE` from its shift so test cleanup works unchanged (the app never deletes shifts). Both user foreign keys are `RESTRICT`. A shift that is claimed and cancelled again keeps every row. Re-seeding deletes the three seeded shifts' cancellations so they return to their trial-start state |
 | AuditEvent | Actor, action, resource, timestamp, safe event metadata. **Implemented (2026-10-17):** `AuditEvent` with an `AuditAction` enum (`shift_claimed`, `shift_cancelled` and, since 2026-10-18, `credential_updated` and `shift_posted`), `resourceType` and `resourceId` as plain strings with no foreign key so history outlives the resource, and JSON `metadata` (`{ agencyId, role, date }` for a post, a snapshot taken at post time; `{ agencyId }` for a claim; `{ agencyId, reason, previousNurseId }` for a cancellation, with `reason` in the API spelling; `{ nurseId, previousExpiresOn, expiresOn }` for a credential save, never the file name; rows saved before `nurseId` existed fall back to the actor). The actor is a foreign key with `RESTRICT`, so tests delete audit rows before their users |
-| Timesheet | Assignment reference, planned duration, submission state, nullable actual hours |
+| Timesheet | **No table (owner decision, 2026-10-18).** Entries are derived: a current assignment is a `Shift` with `status = filled` and a claimed nurse; a past assignment is a `Cancellation` row. Planned duration comes from the shift times; submission state and actual hours do not exist because nothing can be recorded |
 
 Retain seeded expiry eligibility even when a fixture has no uploaded file. File presence is not a new prerequisite for claiming unless the packet is updated.
 
 Use foreign keys and constrained role/status/reason values. Store timestamps for event history, but keep shift `date`, `startTime`, and `endTime` as facility-local calendar values. The packet explicitly requires no timezone conversion.
 
-A lightweight timesheet may show a seeded assignment as “Not submitted,” with actual hours unset. Do not infer that a nurse worked merely because they claimed a shift. If timesheets reference claims over multiple cancellations/reclaims, retain an immutable assignment ID/history rather than attaching all history to the mutable `claimedBy` value.
+A lightweight timesheet may show a seeded assignment as “Not submitted,” with actual hours unset. Do not infer that a nurse worked merely because they claimed a shift. Timesheets store nothing per claim, so no immutable assignment table is needed: each `Cancellation` row already records one past assignment immutably.
 
 ### Seed invariants
 
@@ -407,6 +410,8 @@ Record actual successful business events, with actor, resource, action, and time
 ### Timesheets
 
 Deliver a real view of assignments and submission state. Distinguish planned duration from recorded work. Editing/approval/payroll workflows are deferred unless the core delivery is complete. Display a clear empty state when there are no entries; do not create fictional worked hours.
+
+**Implemented (2026-10-18): timesheet views for every role.** `/nurse/timesheets`, `/agency/timesheets` and `/admin/timesheets` each authorize with `requireRole` and render one `timesheet-table` from `listTimesheetEntries(scope)`: the nurse's own rows (`claimedById` and `previousNurseId`), the agency's own (`agencyId`), or all of them. The service takes a scope, not an actor; each page builds it from the user `requireRole` returns. It runs two queries, filled `Shift` rows and `Cancellation` rows, with nested selects, and `toTimesheetEntries` merges them. Every `Cancellation` row is a history row (state `cancelled` for `advance`, `no-show` for `no_show`) that keeps the previous nurse's name and never counts toward the assigned count or scheduled hours. Order: date, start time, shift `createdAt`, shift ID, then a shift's cancellations oldest first before its current assignment. Planned hours come from `durationHours` (overnight aware); worked hours read "Not recorded" on every row because there is no `Timesheet` row. There is no `GET /api/timesheets`, no paging and no date range, so the admin and agency lists are unbounded (TD-17). A failed load shows the route's `error.tsx`.
 
 ## 10. Required UI automation surface
 
