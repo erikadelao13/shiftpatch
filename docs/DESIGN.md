@@ -274,7 +274,16 @@ This is supporting information, not the enforcement mechanism. Claim eligibility
 
 Display the timezone explicitly near the table. Use the configured facility or schedule timezone; the mockup’s Eastern Time label is illustrative. Do not silently reinterpret shift times using the viewer’s device timezone.
 
-**Implemented (2026-10-17), UI only.** The agency overview is built in `src/app/(workspace)/agency/` and `src/features/shifts/`, with the post-a-shift side panel. Shifts are the spec's sample data held in client state, so a posted shift disappears on reload until persistence lands. Omitted because they have no working destination yet: the Shifts, Nurse roster, Timesheets and Audit log nav items, Help, the date-range and filter controls, "View all shifts", and the Rate and Details columns (shifts have no rate in the data model). Coverage and hours are computed from the visible shifts; there is no date-range scope.
+**Implemented (2026-10-17).** The agency overview is built in `src/app/(workspace)/agency/` and `src/features/shifts/`, with the post-a-shift side panel. It is data-backed: the page is a Server Component that reads the agency's shifts from the database, and posting calls `POST /api/shifts`, so a posted shift survives a reload. The status tabs are All, Open and Filled; there is no Cancelled tab or badge, because status is `open | filled`. The panel is headed "Your shifts" with "Every shift your agency has posted", since it has no date scope. The empty state and the Coverage note read "No shifts posted yet."
+
+Posting states:
+
+- **Validation.** The dialog validates with the same schema as the API before sending anything. A failing field shows its message beside it and no request is sent.
+- **Pending.** The submit button is disabled and reads "Posting…" until the request has returned and the refreshed list has rendered. The dialog cannot be dismissed meanwhile.
+- **Success.** The dialog closes, focus returns to "Post a shift", and "Shift posted" appears in the page's `notification-banner`.
+- **Failure.** The dialog stays open with every input as typed, and the error appears in a `role="alert"` `notification-banner` inside the dialog, because the modal makes the page behind it inert. Opening the dialog clears the page banner, so only one banner exists at a time.
+
+Omitted because they have no working destination yet: the Shifts, Nurse roster, Timesheets and Audit log nav items, Help, the date-range and filter controls, "View all shifts", and the Rate and Details columns (shifts have no rate in the data model). Coverage and hours are computed from the visible shifts; there is no date-range scope.
 
 ## 8. Shared component behavior
 

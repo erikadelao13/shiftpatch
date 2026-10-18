@@ -27,8 +27,8 @@ What to run, what each command actually proves, and where coverage stops. Report
 | `pnpm lint` | ESLint flat config with `eslint-config-next` core-web-vitals and TypeScript rules. Catches rule violations, not behavior. |
 | `pnpm typecheck` | `tsc --noEmit` under `strict`, across every `.ts`/`.tsx` in the project — including `playwright.config.ts` and `e2e/`, which `next build` does not necessarily reach. Requires `.next/types/` from a prior build. Proves nothing at runtime. |
 | `pnpm build` | `next build`. Proves the production build compiles and pages can be prerendered. Slow; the usual source of errors that `typecheck` alone misses, particularly around server/client boundaries. |
-| `pnpm test` | Vitest: unit tests beside the code, and `tests/integration/` against the Neon `dev` branch. Proves password hashing, token checks, the request guard, the login throttle and session revocation. `tests/setup.ts` fails the run unless `NEON_BRANCH=dev`. |
-| `pnpm test:e2e` | Playwright specs in `e2e/` against a dev server Playwright starts itself, on the `dev` branch. Proves the login API contract, the browser sign-in flow, redirects and sign-out in a real browser. |
+| `pnpm test` | Vitest: unit tests beside the code, and `tests/integration/` against the Neon `dev` branch. Proves password hashing, token checks, the request guard, the login throttle and session revocation, plus shift validation, the serializer's nine keys, the permission policy, and `tests/integration/shifts.test.ts` (listing, agency scoping, posting) on a throwaway agency. It fails in `beforeAll` unless the three seeded shifts are in their spec state. `tests/setup.ts` fails the run unless `NEON_BRANCH=dev`. |
+| `pnpm test:e2e` | Playwright specs in `e2e/` against a dev server Playwright starts itself, on the `dev` branch. Proves the login API contract, the browser sign-in flow, redirects and sign-out in a real browser, the exact status codes and bodies of the three shift routes (`e2e/shifts-api.spec.ts`), and the agency board and posting flow (`e2e/agency-ui.spec.ts`). After a run the dev branch should hold exactly 3 `Shift` rows, the seeded ones. |
 | `pnpm db:migrate`, `pnpm db:seed` | Apply migrations and load the spec fixtures. Both refuse unless `NEON_BRANCH=dev`. |
 | `pnpm verify` | `check:docs` → `lint` → `build` → `typecheck` → `test` → `test:e2e`, failing fast. `build` runs **before** `typecheck` deliberately, so the generated route types exist by the time `tsc` runs. |
 
@@ -76,7 +76,7 @@ Automated checks do not establish that a screen is usable. For UI work, run `pnp
 
 ## Limitations — do not overclaim
 
-- **Only authentication is tested.** Shifts, credentials, audit and timesheets don't exist yet. There is no component-level testing, and no test verifies the production deployment. Tracked in [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md) (TD-1).
+- **Only authentication and shift listing and posting are tested.** Claiming and cancelling shifts, credentials, audit and timesheets don't exist yet. There is no component-level testing, and no test verifies the production deployment. Tracked in [exec-plans/tech-debt-tracker.md](exec-plans/tech-debt-tracker.md) (TD-1).
 - Integration and e2e tests depend on the Neon `dev` branch and the network. A failure may be connectivity rather than a defect: on 2026-10-16 a migration failed with `P1001` (TCP 5432 timed out) and succeeded on retry the next day.
 - `pnpm check:docs` validates link *targets*, not anchors, not URL reachability, and not HTML or MDX links. It skips code spans and fenced blocks and does not follow symlinked directories.
 - Git hooks inspect the working tree, not the exact staged or pushed snapshot. A clean `pre-commit` run does not prove a partially staged commit builds. `pre-commit` also *skips* `typecheck` when `.next/types/` is absent rather than failing — so a never-built tree gets less coverage than the message implies.

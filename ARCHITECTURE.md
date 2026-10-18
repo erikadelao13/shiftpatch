@@ -1,6 +1,6 @@
 # ShiftPatch Architecture
 
-> Status: proposed application architecture. Implemented so far: the Neon database foundation and authentication (§7, §12). Everything else is pending.
+> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), and shift listing and posting (§3, §5, §6). Everything else is pending.
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
@@ -24,7 +24,7 @@ This is a design for the assessment, not evidence of production healthcare compl
 | HTTP API | Route Handlers under `src/app/api`, Node.js runtime | Preserve the exact externally tested routes |
 | Frontend organization | Feature folders | Keep related UI, schemas, and behavior together |
 | Styling | Tailwind CSS with reusable accessible primitives | Consistent UI with limited setup |
-| Client server-state | TanStack Query, using a small same-origin API client | Request lifecycle, mutation state, and query invalidation |
+| Client server-state | Proposal: TanStack Query, deferred until a view needs polling or cross-view invalidation. The agency board renders on the server and refreshes with `router.refresh()` after a mutation, through a small same-origin API client | Request lifecycle, mutation state, and query invalidation once more than one view shares shift data |
 | Persistence | Neon Postgres through Prisma | Persistent hosted data, migrations, and transactional writes |
 | Validation | Zod at HTTP boundaries | Validate untrusted input at runtime |
 | Authentication | Self-managed: `node:crypto` scrypt password hashes, HS256 JWTs signed with `jose`, revocable `ApiSession` rows | One token serves both the required email/password-to-token endpoint and the browser, with no second identity provider (§7, `docs/decisions.md`) |
@@ -83,16 +83,16 @@ src/
         admin/page.tsx          # placeholder until the shifts plan
       agency/                   # implemented: sidebar shell and shift board UI
         layout.tsx
-        page.tsx                # UI only: sample shifts, not the database yet
+        page.tsx                # implemented: reads the agency's shifts from the database
     api/
       auth/login/route.ts       # implemented
       auth/me/route.ts          # implemented (proposal, not a spec route)
       auth/logout/route.ts      # implemented (proposal, not a spec route)
       health/route.ts           # implemented: database reachability (proposal, not a spec route)
-      shifts/route.ts
+      shifts/route.ts           # implemented: GET list, POST create
       shifts/[id]/claim/route.ts
       shifts/[id]/cancel/route.ts
-      agencies/[agencyId]/shifts/route.ts
+      agencies/[agencyId]/shifts/route.ts   # implemented
       credentials/route.ts
       credentials/[id]/file/route.ts
       admin/audit/route.ts
@@ -111,15 +111,14 @@ src/
       server/login.ts
       server/request-auth.ts    # requireActor / requireSession
       server/current-user.ts    # getCurrentUser / requireRole for pages
-    shifts/
-      components/
-      hooks/
-      schemas.ts
-      types.ts
-      server/shift-service.ts
-      server/shift-repository.ts
-      server/shift-policy.ts
-      server/shift-presenter.ts
+    shifts/                     # listing and posting implemented; claim and cancel pending
+      components/               # implemented: the agency board and post-a-shift dialog
+      schemas.ts                # implemented: newShiftSchema, shared by the dialog and the API
+      types.ts                  # implemented: ShiftDTO, AgencyShift
+      schedule.ts               # implemented: display helpers
+      server/shift-service.ts   # implemented: Prisma calls live here, no repository layer
+      server/shift-policy.ts    # implemented: canPostShift, canReadAgencyShifts
+      server/shift-presenter.ts # implemented: toShiftDTO, an explicit serializer
     credentials/
       components/
       schemas.ts
@@ -132,9 +131,10 @@ src/
       server/
   shared/
     ui/
-    client/api-client.ts
+    client/api-client.ts        # implemented: apiFetch
     server/db.ts                # implemented
     server/errors.ts            # implemented
+    server/http.ts              # implemented: readJson
 prisma.config.ts                # implemented
 prisma/
   schema.prisma
@@ -172,7 +172,8 @@ Each feature owns its components, hooks, input schemas, public DTO types, and se
 | State | Owner |
 | --- | --- |
 | Dialog open state, selected cancellation reason, form fields | Local React state |
-| Shift lists, application user profile, audit rows, timesheets | Feature query hooks |
+| Agency shift list | Server Component props, refreshed with `router.refresh()` after a post (proposal: feature query hooks once polling or cross-view invalidation is needed) |
+| Application user profile, audit rows, timesheets | Feature query hooks |
 | Roles, ownership, expiry, shift assignment | Server and database |
 | Browser sign-in/session lifecycle | The `shiftpatch_session` HttpOnly cookie, set by the `signIn` Server Action; the `ApiSession` row on the server |
 | API token | Returned in the body of `POST /api/auth/login` to direct API callers. The browser holds the same kind of token only in the HttpOnly cookie; page JavaScript never receives it |
@@ -197,7 +198,7 @@ Use semantic forms and tables, associated labels, keyboard-operable dialogs, vis
 | ApiSession | Revocable session ID (the token's `sid`), application user, expiry, optional revocation time |
 | LoginAttempt | One failed sign-in: submitted email and time. Drives the throttle |
 | Credential | Nurse owner, expiry date, optional private file reference, upload metadata |
-| Shift | Agency, role, facility-local date/time, status, current claimed nurse |
+| Shift | Agency, role (`RN` or `LPN`), facility-local date/time, status (`open` or `filled`), current claimed nurse. **Implemented (2026-10-17):** `Shift` with `ShiftRole` and `ShiftStatus` enums, `date` as a date-only column, times as `HH:MM` `CHAR(5)`, and an index on `agencyId, date, startTime`. Hand-written CHECK constraints in the migration: an open shift has no nurse and a filled shift has one, both times are valid 24-hour `HH:MM`, and start differs from end. IDs are `shift-<uuid>`, generated by the service; a `shift-N` sequence default made Prisma generate a drift migration on every run |
 | Cancellation | Shift, reason, previous nurse, actor, timestamp |
 | AuditEvent | Actor, action, resource, timestamp, safe event metadata |
 | Timesheet | Assignment reference, planned duration, submission state, nullable actual hours |
@@ -218,7 +219,7 @@ Load the two agencies, two nurses, administrator, credentials, and three shifts 
 | shift-2 | agency-a | 2026-10-03 | 07:00 | 19:00 | filled | nurse-1 |
 | shift-3 | agency-b | 2026-10-04 | 19:00 | 07:00 | open | null |
 
-**Implemented (2026-10-17):** `pnpm db:seed` upserts the two agencies and the five accounts idempotently (`prisma/fixtures.ts`, `prisma/seed.ts`) and hashes the shared fixture password `Trial2026!`, which is public, not a secret. It refuses to run unless `NEON_BRANCH=dev`. Shifts, credentials and the rest of the fixtures arrive with their feature plans. The fixed local IDs (`agency-a`, `agency-b`, `nurse-1`, `nurse-2`, `admin-1`) are the primary keys, and an agency login uses its agency ID as its user ID.
+**Implemented (2026-10-17):** `pnpm db:seed` upserts the two agencies and the five accounts idempotently (`prisma/fixtures.ts`, `prisma/seed.ts`) and hashes the shared fixture password `Trial2026!`, which is public, not a secret. It refuses to run unless `NEON_BRANCH=dev`. The three spec shifts are upserted by ID too (2026-10-17); re-seeding puts each of them back to its trial-start state and leaves every other shift alone. Credentials and the rest of the fixtures arrive with their feature plans. The fixed local IDs (`agency-a`, `agency-b`, `nurse-1`, `nurse-2`, `admin-1`) are the primary keys, and an agency login uses its agency ID as its user ID.
 
 Keep the public fixture credentials distinct from `AUTH_JWT_SECRET` and the database credentials. Never create users from an untrusted login request.
 
@@ -265,6 +266,7 @@ For unspecified errors, use consistent semantics: 400 invalid input, 401 unauthe
 
 ### Contract details that need deliberate handling
 
+- **Implemented (2026-10-17): the agency list route.** An agency asking for its own ID gets `200`; another agency's ID gets `403`, checked before existence so agency IDs cannot be probed; a nurse gets `403`; the admin gets `200` for any existing agency and `404` for an unknown one. `POST /api/shifts` ignores an `agencyId` in the body and posts to the caller's own agency; only agency accounts can post, so the admin gets `403` (proposal: the spec leaves the admin's posting right open).
 - The GET example omits `shift-3`, but the prose requires all agencies and exact seed data; return all three seeded shifts.
 - Agency-list examples abbreviate objects; follow the global requirement for full ShiftDTO objects.
 - `shift-7` is an example created ID, not a requirement to hardcode every new shift to that ID.
@@ -487,7 +489,7 @@ Defer email delivery, bulk inspector exports, PostHog, advanced reporting, push 
 
 1. Acceptance matrix and feature boundaries.
 2. Next.js scaffold, database schema/fixtures, first public deployment.
-3. Browser sign-in, direct login, and exact login/listing/posting contracts. Sign-in is implemented (2026-10-17); listing and posting are pending.
+3. Browser sign-in, direct login, and exact login/listing/posting contracts. Sign-in, listing and posting are implemented (2026-10-17).
 4. Atomic claim/cancel behavior with authorization and integration tests.
 5. Main role-specific UI with required test IDs.
 6. Functional lightweight credential, audit, and timesheet views.

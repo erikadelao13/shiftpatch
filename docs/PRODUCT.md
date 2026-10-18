@@ -137,6 +137,12 @@ Views may share a page or use tabs. The assessment does not require a complex na
 - An agency posts under its own identity and cannot access another agency's scoped workspace.
 - Roles and ownership govern operations even when the UI is bypassed.
 
+### Shifts
+
+- A shift's role is RN or LPN. Any other role is rejected (owner decision, 2026-10-17). Adding a role later takes one migration.
+- A shift is `open` or `filled`. A cancellation reopens it and is kept as history, not shown as a status (owner decision, 2026-10-17).
+- An agency posts a shift to its own agency only, and a new shift starts open and unassigned.
+
 ### Shift lifecycle
 
 | Starting state | Action | Result |
