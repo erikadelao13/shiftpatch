@@ -158,6 +158,20 @@ Agent proposals, not yet reviewed by the owner:
 - **Saves for one nurse are serialized** by locking the nurse's `User` row, so first saves cannot collide and `previousExpiresOn` is accurate.
 - **Re-seeding** deletes the fixture nurses' documents and leaves audit rows alone.
 
+### 2026-10-18: audit log decisions
+
+Owner decisions, answered while planning:
+
+- **A page only, with no `GET /api/admin/audit`.** The page's `requireRole("admin")` authorizes, as on the admin overview.
+- **The newest 50 events plus a total count**, with no paging controls.
+- **Credential events show the nurse ID** in the Record column. New events store `nurseId` in their metadata, and older rows fall back to the actor.
+
+Agent defaults, not yet reviewed by the owner:
+
+- **`shift_posted` metadata is `{ agencyId, role, date }`**, a snapshot, so the entry outlives the shift.
+- **Metadata is parsed strictly.** A malformed row fails the page instead of being dropped, because hiding history is worse than a visible error.
+- **Only successful business events are audited.** There are no login or failed-attempt events, no backfill for seeded shifts and no seeded audit rows, so the dev page shows its empty state until someone acts.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.
