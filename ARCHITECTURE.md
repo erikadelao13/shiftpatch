@@ -1,6 +1,6 @@
 # ShiftPatch Architecture
 
-> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). Timesheets are pending.
+> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). the nurse timesheet UI, which lists the nurse's own assigned shifts with planned hours and no recorded work (§9). The `Timesheet` model, `GET /api/timesheets` and the agency and admin timesheet views are pending.
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
@@ -132,7 +132,8 @@ src/
       server/audit-presenter.ts # implemented: per-action metadata schemas, toAuditEntry (malformed metadata throws)
       server/audit-service.ts   # implemented: recordAuditEvent (transaction client only), listAuditEntries
     timesheets/
-      components/
+      components/               # implemented: nurse timesheet page and table
+      hours.ts                  # implemented: formatHours, totalScheduledHours
       server/
   shared/
     ui/
@@ -407,6 +408,8 @@ Record actual successful business events, with actor, resource, action, and time
 ### Timesheets
 
 Deliver a real view of assignments and submission state. Distinguish planned duration from recorded work. Editing/approval/payroll workflows are deferred unless the core delivery is complete. Display a clear empty state when there are no entries; do not create fictional worked hours.
+
+**Implemented (2026-10-18): nurse timesheet UI only.** `/nurse/timesheets` authorizes with `requireRole("nurse")` and reuses `getNurseMarketplace(user.id).myShifts`, so it lists the nurse's current assignments from the `Shift` table in schedule order; it adds no model, migration or route. Planned hours come from `durationHours` (overnight aware). There is no `Timesheet` row yet, so every assignment's worked hours read "Not recorded" and the recorded-hours total is "—". A cancelled or no-show assignment unassigns the nurse, so it drops out of the list and the totals. Not built: the `Timesheet` model with an immutable assignment reference, submission state and actual hours, `GET /api/timesheets`, and the agency and admin views (§7 permissions). A failed load shows `nurse/timesheets/error.tsx`.
 
 ## 10. Required UI automation surface
 
