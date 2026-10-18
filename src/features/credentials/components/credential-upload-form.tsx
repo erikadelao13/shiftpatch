@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type DragEvent, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { z } from "zod";
 
 import { formatDate } from "@/features/shifts/schedule";
@@ -8,6 +8,7 @@ import { useServerRefresh } from "@/features/shifts/use-server-refresh";
 import { apiFetch } from "@/shared/client/api-client";
 import { DocumentIcon, LockIcon, UploadIcon } from "@/shared/ui/icons";
 
+import { PAST_EXPIRY_MESSAGE, formatFileSize } from "../document";
 import {
   credentialFileSchema,
   credentialUploadSchema,
@@ -21,16 +22,11 @@ const ACCEPT = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png";
 const fieldClass =
   "h-11 w-full rounded-control border border-input-border bg-surface px-3 text-base aria-[invalid=true]:border-danger-text disabled:bg-surface-subtle";
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 function describedBy(...ids: (string | false)[]): string | undefined {
   return ids.filter(Boolean).join(" ") || undefined;
 }
 
-export function CredentialUploadForm() {
+export function CredentialUploadForm({ today }: { today: string }) {
   const { refresh } = useServerRefresh();
   const fileRef = useRef<HTMLInputElement>(null);
   const expiryRef = useRef<HTMLInputElement>(null);
@@ -40,6 +36,10 @@ export function CredentialUploadForm() {
   const [errors, setErrors] = useState<CredentialUploadErrors>({});
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pending, setPending] = useState(false);
+
+  useLayoutEffect(() => {
+    return () => setNotice(null);
+  }, []);
 
   function selectFile(file: File | null) {
     setSelected(file);
@@ -76,6 +76,13 @@ export function CredentialUploadForm() {
       setErrors({ file: fieldErrors.file?.[0], expiresOn: fieldErrors.expiresOn?.[0] });
       setNotice(null);
       (fieldErrors.file ? fileRef : expiryRef).current?.focus();
+      return;
+    }
+
+    if (parsed.data.expiresOn < today) {
+      setErrors({ expiresOn: PAST_EXPIRY_MESSAGE });
+      setNotice(null);
+      expiryRef.current?.focus();
       return;
     }
 
@@ -136,7 +143,7 @@ export function CredentialUploadForm() {
                 <DocumentIcon className="size-8 text-brand-800" />
                 <p id="credential-file-selected" className="break-all text-text">
                   <span className="font-medium">{selected.name}</span>
-                  <span className="text-text-muted"> · {formatSize(selected.size)}</span>
+                  <span className="text-text-muted"> · {formatFileSize(selected.size)}</span>
                 </p>
               </>
             ) : (
@@ -189,6 +196,7 @@ export function CredentialUploadForm() {
             id="credential-expiry"
             name="expiresOn"
             type="date"
+            min={today}
             required
             data-testid="credential-expiry-date-input"
             aria-invalid={errors.expiresOn ? true : undefined}

@@ -4,7 +4,7 @@ import { requireRole } from "@/features/auth/server/current-user";
 import { CredentialBanner } from "@/features/credentials/components/credential-banner";
 import { CredentialUploadForm } from "@/features/credentials/components/credential-upload-form";
 import { CurrentCredential } from "@/features/credentials/components/current-credential";
-import { getCredentialExpiry } from "@/features/credentials/server/credential-service";
+import { getCredentialRecord } from "@/features/credentials/server/credential-service";
 import { getCredentialStatus, todayIsoDate } from "@/features/credentials/status";
 
 export default function CredentialsPage() {
@@ -34,14 +34,16 @@ export default function CredentialsPage() {
 
 async function CredentialWorkspace() {
   const user = await requireRole("nurse");
-  const status = getCredentialStatus(await getCredentialExpiry(user.id), todayIsoDate());
+  const record = await getCredentialRecord(user.id);
+  const today = todayIsoDate();
+  const status = getCredentialStatus(record.expiresOn, today);
 
   return (
     <>
       <CredentialBanner status={status} />
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
-        <CredentialUploadForm />
-        <CurrentCredential status={status} />
+        <CredentialUploadForm today={today} />
+        <CurrentCredential status={status} document={record.document} />
       </div>
     </>
   );

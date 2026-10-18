@@ -1,7 +1,9 @@
 import { formatDate } from "@/features/shifts/schedule";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
+import { formatFileSize } from "../document";
 import type { CredentialStatus } from "../status";
+import type { CredentialDocumentSummary } from "../types";
 
 const BADGES = {
   valid: { label: "Valid", className: "bg-success-bg text-success-text" },
@@ -9,7 +11,13 @@ const BADGES = {
   missing: { label: "Not on file", className: "bg-warning-bg text-warning-text" },
 } as const;
 
-export function CurrentCredential({ status }: { status: CredentialStatus }) {
+export function CurrentCredential({
+  status,
+  document,
+}: {
+  status: CredentialStatus;
+  document: CredentialDocumentSummary | null;
+}) {
   const badge = BADGES[status.state];
 
   return (
@@ -39,14 +47,39 @@ export function CurrentCredential({ status }: { status: CredentialStatus }) {
         </div>
         <div className="grid grid-cols-[7.5rem_1fr] gap-4 py-4">
           <dt className="text-text-muted">Document</dt>
-          <dd>No document uploaded</dd>
+          <dd>
+            {document ? (
+              <div className="flex flex-col gap-1">
+                <span className="break-all font-medium">
+                  {document.fileName}
+                  <span className="font-normal text-text-muted">
+                    {" "}
+                    · {formatFileSize(document.sizeBytes)}
+                  </span>
+                </span>
+                <span className="text-text-muted">
+                  Uploaded {formatDate(document.uploadedAt.slice(0, 10))}
+                </span>
+                <a
+                  href="/api/credentials/document"
+                  className="w-fit font-medium text-brand-800 underline underline-offset-2"
+                >
+                  View document
+                </a>
+              </div>
+            ) : (
+              "No document uploaded"
+            )}
+          </dd>
         </div>
       </dl>
 
       <p className="-mt-2 text-sm text-text-muted">
-        {status.state === "missing"
-          ? "Upload your document and its expiry date to start claiming shifts."
-          : "Your record has an expiry date but no document yet. Upload one to complete it."}
+        {document
+          ? "Uploading a new document replaces this one."
+          : status.state === "missing"
+            ? "Upload your document and its expiry date to start claiming shifts."
+            : "Your record has an expiry date but no document yet. Upload one to complete it."}
       </p>
 
       <div className="rounded-card bg-sage px-5 py-4">

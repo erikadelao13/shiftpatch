@@ -1,11 +1,14 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-import { deleteOwnRows, PASSWORD, sessionIdOf } from "./support";
+import { createNurse, deleteOwnRows, PASSWORD, sessionIdOf } from "./support";
 
 const sessionIds: string[] = [];
+const shiftIds: string[] = [];
+const userIds: string[] = [];
+const emails: string[] = [];
 
 test.afterAll(async () => {
-  await deleteOwnRows({ sessionIds });
+  await deleteOwnRows({ sessionIds, shiftIds, userIds, emails });
 });
 
 async function signIn(page: Page, email: string) {
@@ -30,6 +33,7 @@ async function openCredentials(page: Page, email: string) {
 const current = (page: Page) => page.getByRole("region", { name: "Current credential" });
 // Next.js keeps the marketplace mounted but hidden after navigating away, banner included.
 const credentialStatus = (page: Page) => page.getByTestId("credential-status").filter({ visible: true });
+const banner = (page: Page) => page.getByTestId("notification-banner").filter({ visible: true });
 
 function pdf(name = "license.pdf", size = 2048) {
   return { name, mimeType: "application/pdf", buffer: Buffer.alloc(size) };
@@ -100,7 +104,7 @@ test.describe("the nurse credentials page", () => {
 
     await save.click();
     await expect(page.getByTestId("credential-expiry-date-input")).toBeFocused();
-    await expect(page.getByTestId("notification-banner")).toHaveCount(0);
+    await expect(banner(page)).toHaveCount(0);
     expect(requests).toBe(0);
   });
 
@@ -129,9 +133,8 @@ test.describe("the nurse credentials page", () => {
     await expect(page.getByTestId("credential-expiry-date-input")).toBeDisabled();
     release();
 
-    const banner = page.getByTestId("notification-banner");
-    await expect(banner).toHaveText(/That file could not be read\. Choose another file\./);
-    await expect(banner).toHaveAttribute("role", "alert");
+    await expect(banner(page)).toHaveText(/That file could not be read\. Choose another file\./);
+    await expect(banner(page)).toHaveAttribute("role", "alert");
     expect(body).toContain('name="file"; filename="license.pdf"');
     expect(body).toContain('name="expiresOn"');
     expect(body).toContain("2028-03-31");
@@ -141,4 +144,79 @@ test.describe("the nurse credentials page", () => {
     await expect(page.getByRole("button", { name: "Save credential" })).toBeEnabled();
     await expect(credentialStatus(page)).toHaveAttribute("data-state", "valid");
   });
+
+  test("rejects a past date before sending, using the server's message", async ({ page }) => {
+    let requests = 0;
+    await page.route("**/api/credentials", (route) => {
+      requests += 1;
+      return route.abort();
+    });
+    await openCredentials(page, "maria.lopez@example.com");
+
+    await page.getByTestId("credential-upload-input").setInputFiles(pdf());
+    await page.getByTestId("credential-expiry-date-input").fill("2020-01-01");
+    await page.getByRole("button", { name: "Save credential" }).click();
+
+    await expect(page.getByText("Expiry date must be today or later.")).toBeVisible();
+    await expect(page.getByTestId("credential-expiry-date-input")).toBeFocused();
+    expect(requests).toBe(0);
+  });
+
+  test("an expired nurse saves a document and can claim again", async ({ page, request }) => {
+    const nurse = await createNurse({ expiresOn: "2020-01-01" });
+    userIds.push(nurse.id);
+    emails.push(nurse.email);
+    await postShift(request, "2027-09-15");
+
+    await openCredentials(page, nurse.email);
+    await expect(credentialStatus(page)).toHaveAttribute("data-state", "expired");
+    await expect(current(page)).toContainText("No document uploaded");
+
+    const bytes = Buffer.from("%PDF-1.7\nthe real thing\n");
+    await page
+      .getByTestId("credential-upload-input")
+      .setInputFiles({ name: "my license.pdf", mimeType: "application/pdf", buffer: bytes });
+    await page.getByTestId("credential-expiry-date-input").fill("2099-12-31");
+    await page.getByRole("button", { name: "Save credential" }).click();
+
+    await expect(banner(page)).toHaveText(/Credential saved\. Your expiry date is now Dec 31, 2099\./);
+    await expect(page.getByTestId("credential-expiry-date-input")).toHaveValue("");
+    await expect(credentialStatus(page)).toHaveAttribute("data-state", "valid");
+    await expect(current(page)).toContainText("Valid");
+    await expect(current(page)).toContainText("my license.pdf");
+    await expect(current(page)).toContainText("Uploaded");
+    await expect(current(page)).toContainText("Uploading a new document replaces this one.");
+
+    const download = page.waitForEvent("download");
+    await current(page).getByRole("link", { name: "View document" }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toBe("my license.pdf");
+    const path = await file.path();
+    expect((await import("node:fs")).readFileSync(path).equals(bytes)).toBe(true);
+
+    await page.getByRole("navigation", { name: "Nurse" }).getByRole("link", { name: "Shift marketplace" }).click();
+    await expect(page).toHaveURL(/\/nurse$/);
+    await expect(credentialStatus(page)).toHaveAttribute("data-state", "valid");
+    const row = page.getByTestId("shift-list-item").filter({ hasText: "Sep 15, 2027" });
+    await row.getByTestId("shift-claim-button").click();
+    await expect(banner(page)).toContainText("Shift claimed");
+
+    await page.getByRole("navigation", { name: "Nurse" }).getByRole("link", { name: "Credentials" }).click();
+    await expect(page.getByText("Credential saved.")).toHaveCount(0);
+  });
 });
+
+async function postShift(request: APIRequestContext, date: string): Promise<void> {
+  const login = await request.post("/api/auth/login", {
+    data: { email: "admin@sunrisehealth.example", password: PASSWORD },
+  });
+  const { token } = await login.json();
+  const sid = sessionIdOf(token);
+  if (sid) sessionIds.push(sid);
+  const response = await request.post("/api/shifts", {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { role: "RN", date, startTime: "07:00", endTime: "19:00" },
+  });
+  expect(response.status()).toBe(201);
+  shiftIds.push((await response.json()).id);
+}
