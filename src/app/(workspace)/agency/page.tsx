@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 
 import { requireRole } from "@/features/auth/server/current-user";
+import { ShiftBoard } from "@/features/shifts/components/shift-board";
+import { sampleShiftsByAgency } from "@/features/shifts/sample-shifts";
+import { getPrisma } from "@/shared/server/db";
 
 export default function AgencyPage() {
   return (
@@ -12,16 +15,13 @@ export default function AgencyPage() {
 
 async function AgencyWorkspace() {
   const user = await requireRole("agency");
+  const agency = user.agencyId
+    ? await getPrisma().agency.findUnique({
+        where: { id: user.agencyId },
+        select: { name: true },
+      })
+    : null;
+  const shifts = user.agencyId ? (sampleShiftsByAgency[user.agencyId] ?? []) : [];
 
-  return (
-    <section className="flex flex-col gap-3">
-      <h1 className="font-display text-4xl leading-[1.12] text-brand-800">
-        Welcome, {user.name}
-      </h1>
-      <h2 className="text-lg font-medium">Your agency&apos;s shifts will live here</h2>
-      <p className="max-w-xl text-text-muted">
-        Posting shifts and tracking coverage arrive in an upcoming release.
-      </p>
-    </section>
-  );
+  return <ShiftBoard agencyName={agency?.name ?? user.name} initialShifts={shifts} />;
 }
