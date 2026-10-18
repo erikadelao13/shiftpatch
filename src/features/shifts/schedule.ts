@@ -1,4 +1,4 @@
-import type { AgencyShift, NewShiftInput, ShiftStatus } from "./types";
+import type { AgencyShift } from "./types";
 
 const MINUTES_PER_DAY = 24 * 60;
 
@@ -36,13 +36,6 @@ export function summarize(shifts: readonly AgencyShift[]): ShiftSummary {
   };
 }
 
-export function countByStatus(
-  shifts: readonly AgencyShift[],
-  status: ShiftStatus,
-): number {
-  return shifts.filter((shift) => shift.status === status).length;
-}
-
 export function formatDate(isoDate: string): string {
   const [year = 0, month = 1, day = 1] = isoDate.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
@@ -60,17 +53,4 @@ export function formatTimeRange(shift: Pick<AgencyShift, "startTime" | "endTime"
 
 export function compareShifts(a: AgencyShift, b: AgencyShift): number {
   return `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`);
-}
-
-export type NewShiftErrors = Partial<Record<keyof NewShiftInput, string>>;
-
-export function validateNewShift(input: NewShiftInput): NewShiftErrors {
-  const errors: NewShiftErrors = {};
-  if (!input.date) errors.date = "Choose a date.";
-  if (!input.startTime) errors.startTime = "Choose a start time.";
-  if (!input.endTime) errors.endTime = "Choose an end time.";
-  if (input.startTime && input.startTime === input.endTime) {
-    errors.endTime = "End time must differ from the start time.";
-  }
-  return errors;
 }

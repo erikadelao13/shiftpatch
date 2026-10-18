@@ -4,14 +4,14 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { CloseIcon } from "@/shared/ui/icons";
 
-import { validateNewShift, type NewShiftErrors } from "../schedule";
-import { SHIFT_ROLES, type NewShiftInput, type ShiftRole } from "../types";
+import { newShiftSchema, toFieldErrors, type NewShiftErrors, type NewShiftInput } from "../schemas";
+import { SHIFT_ROLES } from "../types";
 
 type PostShiftDialogProps = {
   open: boolean;
   agencyName: string;
   onClose: () => void;
-  onPost: (shift: NewShiftInput) => void;
+  onPost: (shift: NewShiftInput) => Promise<void>;
 };
 
 const fieldClass =
@@ -21,6 +21,8 @@ export function PostShiftDialog({ open, agencyName, onClose, onPost }: PostShift
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [errors, setErrors] = useState<NewShiftErrors>({});
   const [formKey, setFormKey] = useState(0);
+  const [pending, setPending] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -31,26 +33,38 @@ export function PostShiftDialog({ open, agencyName, onClose, onPost }: PostShift
 
   function handleClose() {
     setErrors({});
+    setFormError(null);
     setFormKey((key) => key + 1);
     onClose();
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     const data = new FormData(event.currentTarget);
-    const input: NewShiftInput = {
-      role: data.get("role") as ShiftRole,
-      date: String(data.get("date") ?? ""),
-      startTime: String(data.get("startTime") ?? ""),
-      endTime: String(data.get("endTime") ?? ""),
-    };
+    const parsed = newShiftSchema.safeParse({
+      role: data.get("role"),
+      date: data.get("date"),
+      startTime: data.get("startTime"),
+      endTime: data.get("endTime"),
+    });
+    if (!parsed.success) {
+      setErrors(toFieldErrors(parsed.error));
+      setFormError(null);
+      return;
+    }
 
-    const found = validateNewShift(input);
-    setErrors(found);
-    if (Object.keys(found).length > 0) return;
-
-    onPost(input);
-    dialogRef.current?.close();
+    setErrors({});
+    setFormError(null);
+    setPending(true);
+    try {
+      await onPost(parsed.data);
+      dialogRef.current?.close();
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Could not post the shift.");
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -58,8 +72,11 @@ export function PostShiftDialog({ open, agencyName, onClose, onPost }: PostShift
       ref={dialogRef}
       aria-labelledby="post-shift-title"
       onClose={handleClose}
+      onCancel={(event) => {
+        if (pending) event.preventDefault();
+      }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) dialogRef.current?.close();
+        if (event.target === event.currentTarget && !pending) dialogRef.current?.close();
       }}
       className="m-0 ml-auto h-dvh max-h-none w-full max-w-md bg-surface text-text shadow-[0_16px_48px_rgb(20_62_50/14%)] backdrop:bg-brand-900/40"
     >
@@ -80,12 +97,23 @@ export function PostShiftDialog({ open, agencyName, onClose, onPost }: PostShift
             <button
               type="button"
               aria-label="Close"
+              disabled={pending}
               onClick={() => dialogRef.current?.close()}
               className="-mr-2 -mt-2 flex size-11 shrink-0 items-center justify-center rounded-control hover:bg-surface-subtle"
             >
               <CloseIcon />
             </button>
           </div>
+
+          {formError ? (
+            <div
+              role="alert"
+              data-testid="notification-banner"
+              className="rounded-control bg-danger-bg px-4 py-3 text-sm font-medium text-danger-text"
+            >
+              {formError}
+            </div>
+          ) : null}
 
           <div className="flex flex-col gap-2">
             <label htmlFor="post-agency" className="text-sm font-medium">
@@ -185,6 +213,7 @@ export function PostShiftDialog({ open, agencyName, onClose, onPost }: PostShift
         <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
           <button
             type="button"
+            disabled={pending}
             onClick={() => dialogRef.current?.close()}
             className="h-11 rounded-control border border-brand-800 bg-surface px-5 font-medium text-brand-800 hover:bg-surface-subtle"
           >
@@ -193,9 +222,10 @@ export function PostShiftDialog({ open, agencyName, onClose, onPost }: PostShift
           <button
             type="submit"
             data-testid="agency-post-shift-submit-button"
-            className="h-11 rounded-control bg-brand-800 px-5 font-medium text-on-brand hover:bg-brand-900"
+            disabled={pending}
+            className="h-11 rounded-control bg-brand-800 px-5 font-medium text-on-brand hover:bg-brand-900 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Post a shift
+            {pending ? "Posting…" : "Post a shift"}
           </button>
         </div>
       </form>

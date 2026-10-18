@@ -11,11 +11,6 @@ const BADGES: Record<ShiftStatus, { label: string; className: string; dot: strin
     className: "bg-success-bg text-success-text",
     dot: "bg-success-text",
   },
-  cancelled: {
-    label: "Cancelled",
-    className: "bg-neutral-bg text-neutral-text",
-    dot: "bg-neutral-text",
-  },
 };
 
 export function StatusBadge({ status }: { status: ShiftStatus }) {

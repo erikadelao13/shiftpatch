@@ -1,49 +1,61 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from "react";
 
+import { apiFetch } from "@/shared/client/api-client";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
-import { compareShifts, countByStatus, summarize } from "../schedule";
-import type { AgencyShift, NewShiftInput, ShiftStatus } from "../types";
+import { summarize } from "../schedule";
+import type { NewShiftInput } from "../schemas";
+import type { AgencyShift, ShiftDTO, ShiftStatus } from "../types";
 import { PostShiftDialog } from "./post-shift-dialog";
 import { ShiftsTable } from "./shifts-table";
 import { StatCard } from "./stat-card";
 
 type ShiftBoardProps = {
   agencyName: string;
-  initialShifts: AgencyShift[];
+  shifts: AgencyShift[];
 };
 
 type TabKey = "all" | ShiftStatus;
 
-export function ShiftBoard({ agencyName, initialShifts }: ShiftBoardProps) {
-  const [shifts, setShifts] = useState(initialShifts);
+export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
+  const awaitedShift = useRef<{ id: string; resolve: () => void } | null>(null);
   const [postOpen, setPostOpen] = useState(false);
   const [tab, setTab] = useState<TabKey>("all");
   const [notice, setNotice] = useState<string | null>(null);
   const postButtonRef = useRef<HTMLButtonElement>(null);
 
   const summary = summarize(shifts);
-  const hasCancelled = countByStatus(shifts, "cancelled") > 0;
   const tabs: { key: TabKey; label: string; count: number }[] = [
     { key: "all", label: "All shifts", count: shifts.length },
     { key: "open", label: "Open", count: summary.open },
     { key: "filled", label: "Filled", count: summary.filled },
-    ...(hasCancelled
-      ? [{ key: "cancelled" as const, label: "Cancelled", count: countByStatus(shifts, "cancelled") }]
-      : []),
   ];
   const activeTab = tabs.some((item) => item.key === tab) ? tab : "all";
   const visible = shifts.filter((shift) => activeTab === "all" || shift.status === activeTab);
 
-  function postShift(input: NewShiftInput) {
-    const next = shifts.length + 1;
-    setShifts((current) =>
-      [...current, { ...input, id: `new-${next}`, status: "open" as const, nurseName: null }].sort(
-        compareShifts,
-      ),
-    );
+  useEffect(() => {
+    const awaited = awaitedShift.current;
+    if (!awaited) return;
+    if (shifts.some((shift) => shift.id === awaited.id) || !refreshing) {
+      awaitedShift.current = null;
+      awaited.resolve();
+    }
+  }, [shifts, refreshing]);
+
+  async function postShift(input: NewShiftInput) {
+    const created = await apiFetch<ShiftDTO>("/api/shifts", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    await new Promise<void>((resolve) => {
+      awaitedShift.current = { id: created.id, resolve };
+      startRefresh(() => router.refresh());
+    });
     setTab("all");
     setNotice("Shift posted");
   }
@@ -77,7 +89,10 @@ export function ShiftBoard({ agencyName, initialShifts }: ShiftBoardProps) {
             ref={postButtonRef}
             type="button"
             data-testid="agency-post-shift-button"
-            onClick={() => setPostOpen(true)}
+            onClick={() => {
+              setNotice(null);
+              setPostOpen(true);
+            }}
             className="h-11 rounded-control bg-brand-800 px-5 font-medium text-on-brand hover:bg-brand-900"
           >
             Post a shift
@@ -106,7 +121,7 @@ export function ShiftBoard({ agencyName, initialShifts }: ShiftBoardProps) {
         <StatCard label="Open shifts" value={String(summary.open)} />
         <StatCard label="Filled shifts" value={String(summary.filled)} />
         {summary.coveragePercent === null ? (
-          <StatCard label="Coverage" value="—" note="No shifts in this period" />
+          <StatCard label="Coverage" value="—" note="No shifts posted yet." />
         ) : (
           <StatCard label="Coverage" value={`${summary.coveragePercent}%`}>
             <div
@@ -128,14 +143,14 @@ export function ShiftBoard({ agencyName, initialShifts }: ShiftBoardProps) {
       </section>
 
       <section
-        aria-labelledby="upcoming-title"
+        aria-labelledby="shifts-title"
         className="overflow-hidden rounded-card border border-border bg-surface shadow-card"
       >
         <div className="px-5 pt-6 sm:px-6">
-          <h2 id="upcoming-title" className="font-display text-2xl leading-tight">
-            Upcoming shifts
+          <h2 id="shifts-title" className="font-display text-2xl leading-tight">
+            Your shifts
           </h2>
-          <p className="mt-1 text-text-muted">Your agency&apos;s schedule for the week</p>
+          <p className="mt-1 text-text-muted">Every shift your agency has posted</p>
         </div>
 
         <div role="tablist" aria-label="Shift status" className="mt-4 flex gap-6 overflow-x-auto border-b border-border px-5 sm:px-6">
@@ -168,7 +183,7 @@ export function ShiftBoard({ agencyName, initialShifts }: ShiftBoardProps) {
           <ShiftsTable
             shifts={visible}
             agencyName={agencyName}
-            emptyMessage={shifts.length === 0 ? "No shifts in this period." : "No shifts match these filters."}
+            emptyMessage={shifts.length === 0 ? "No shifts posted yet." : "No shifts match these filters."}
           />
         </div>
 

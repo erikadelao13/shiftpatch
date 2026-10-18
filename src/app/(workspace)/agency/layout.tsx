@@ -3,7 +3,7 @@ import { Suspense, type ReactNode } from "react";
 
 import { signOut } from "@/features/auth/actions";
 import { requireRole } from "@/features/auth/server/current-user";
-import { getPrisma } from "@/shared/server/db";
+import { getAgencyName } from "@/features/shifts/server/shift-service";
 import { HomeIcon } from "@/shared/ui/icons";
 import { Sidebar } from "@/shared/ui/sidebar";
 
@@ -20,16 +20,11 @@ export default function AgencyLayout({ children }: { children: ReactNode }) {
 
 async function AgencySidebar() {
   const user = await requireRole("agency");
-  const agency = user.agencyId
-    ? await getPrisma().agency.findUnique({
-        where: { id: user.agencyId },
-        select: { name: true },
-      })
-    : null;
+  const agencyName = user.agencyId ? await getAgencyName(user.agencyId) : user.name;
 
   return (
     <Sidebar
-      workspaceName={agency?.name ?? user.name}
+      workspaceName={agencyName}
       userName={user.name}
       roleLabel="Agency"
       signOutAction={signOut}

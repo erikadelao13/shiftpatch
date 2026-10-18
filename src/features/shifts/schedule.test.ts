@@ -6,7 +6,6 @@ import {
   formatDate,
   formatTimeRange,
   summarize,
-  validateNewShift,
 } from "./schedule";
 import type { AgencyShift } from "./types";
 
@@ -52,45 +51,15 @@ describe("formatDate", () => {
 });
 
 describe("summarize", () => {
-  it("excludes cancelled shifts from coverage and hours", () => {
+  it("counts coverage and hours from open and filled shifts", () => {
     const summary = summarize([
       shift({ status: "open" }),
       shift({ status: "filled", nurseName: "Maria Lopez" }),
-      shift({ status: "cancelled" }),
     ]);
     expect(summary).toEqual({ open: 1, filled: 1, coveragePercent: 50, scheduledHours: 12 });
   });
 
-  it("has no coverage percentage without open or filled shifts", () => {
-    expect(summarize([shift({ status: "cancelled" })]).coveragePercent).toBeNull();
+  it("has no coverage percentage without shifts", () => {
     expect(summarize([]).coveragePercent).toBeNull();
-  });
-});
-
-describe("validateNewShift", () => {
-  it("requires a date", () => {
-    const errors = validateNewShift({
-      role: "RN",
-      date: "",
-      startTime: "07:00",
-      endTime: "19:00",
-    });
-    expect(errors.date).toBeDefined();
-  });
-
-  it("rejects identical start and end times", () => {
-    const errors = validateNewShift({
-      role: "RN",
-      date: "2026-10-05",
-      startTime: "07:00",
-      endTime: "07:00",
-    });
-    expect(errors.endTime).toBeDefined();
-  });
-
-  it("accepts an overnight shift", () => {
-    expect(
-      validateNewShift({ role: "RN", date: "2026-10-05", startTime: "19:00", endTime: "07:00" }),
-    ).toEqual({});
   });
 });
