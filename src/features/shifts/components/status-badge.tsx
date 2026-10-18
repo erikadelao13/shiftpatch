@@ -13,10 +13,11 @@ const BADGES: Record<ShiftStatus, { label: string; className: string; dot: strin
   },
 };
 
-export function StatusBadge({ status }: { status: ShiftStatus }) {
+export function StatusBadge({ status, testId }: { status: ShiftStatus; testId?: string }) {
   const badge = BADGES[status];
   return (
     <span
+      data-testid={testId}
       className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${badge.className}`}
     >
       <span aria-hidden="true" className={`size-2 rounded-full ${badge.dot}`} />

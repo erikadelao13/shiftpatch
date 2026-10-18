@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { apiFetch } from "@/shared/client/api-client";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
@@ -9,18 +9,17 @@ import { ShieldCheckIcon } from "@/shared/ui/icons";
 import { formatDate, summarize } from "../schedule";
 import type { NewShiftInput } from "../schemas";
 import { useServerRefresh } from "../use-server-refresh";
-import type { AgencyShift, CancellationReason, ShiftDTO, ShiftStatus } from "../types";
+import type { AgencyShift, CancellationReason, ShiftDTO } from "../types";
 import { PostShiftDialog } from "./post-shift-dialog";
 import { ReopenShiftDialog, type ReopenTarget } from "./reopen-shift-dialog";
 import { ShiftsTable } from "./shifts-table";
-import { StatCard } from "./stat-card";
+import { StatusTabs, type StatusTab, type TabKey } from "./status-tabs";
+import { SummaryCards } from "./summary-cards";
 
 type ShiftBoardProps = {
   agencyName: string;
   shifts: AgencyShift[];
 };
-
-type TabKey = "all" | ShiftStatus;
 
 export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
   const router = useRouter();
@@ -34,7 +33,7 @@ export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
   const postButtonRef = useRef<HTMLButtonElement>(null);
 
   const summary = summarize(shifts);
-  const tabs: { key: TabKey; label: string; count: number }[] = [
+  const tabs: StatusTab[] = [
     { key: "all", label: "All shifts", count: shifts.length },
     { key: "open", label: "Open", count: summary.open },
     { key: "filled", label: "Filled", count: summary.filled },
@@ -80,16 +79,6 @@ export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
     setNotice(
       `${prefix}: ${shift.nurseName ?? "The nurse"} was unassigned from the ${shift.role} shift on ${formatDate(shift.date)}. The shift is open again.`,
     );
-  }
-
-  function moveTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-    if (!step) return;
-    event.preventDefault();
-    const target = tabs[(index + step + tabs.length) % tabs.length];
-    if (!target) return;
-    setTab(target.key);
-    document.getElementById(`tab-${target.key}`)?.focus();
   }
 
   return (
@@ -139,30 +128,7 @@ export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
         </div>
       ) : null}
 
-      <section aria-label="Summary" className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Open shifts" value={String(summary.open)} />
-        <StatCard label="Filled shifts" value={String(summary.filled)} />
-        {summary.coveragePercent === null ? (
-          <StatCard label="Coverage" value="—" note="No shifts posted yet." />
-        ) : (
-          <StatCard label="Coverage" value={`${summary.coveragePercent}%`}>
-            <div
-              role="meter"
-              aria-label="Coverage"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={summary.coveragePercent}
-              className="mt-3 h-1.5 overflow-hidden rounded-full bg-border"
-            >
-              <div
-                className="h-full rounded-full bg-brand-800"
-                style={{ width: `${summary.coveragePercent}%` }}
-              />
-            </div>
-          </StatCard>
-        )}
-        <StatCard label="Hours scheduled" value={`${summary.scheduledHours}h`} />
-      </section>
+      <SummaryCards summary={summary} emptyNote="No shifts posted yet." />
 
       <section
         aria-labelledby="shifts-title"
@@ -175,31 +141,7 @@ export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
           <p className="mt-1 text-text-muted">Every shift your agency has posted</p>
         </div>
 
-        <div role="tablist" aria-label="Shift status" className="mt-4 flex gap-6 overflow-x-auto border-b border-border px-5 sm:px-6">
-          {tabs.map((item, index) => {
-            const selected = item.key === activeTab;
-            return (
-              <button
-                key={item.key}
-                id={`tab-${item.key}`}
-                role="tab"
-                type="button"
-                aria-selected={selected}
-                aria-controls="shift-panel"
-                tabIndex={selected ? 0 : -1}
-                onClick={() => setTab(item.key)}
-                onKeyDown={(event) => moveTab(event, index)}
-                className={`-mb-px h-12 shrink-0 border-b-2 text-sm font-medium ${
-                  selected
-                    ? "border-brand-800 text-brand-800"
-                    : "border-transparent text-text-muted hover:text-text"
-                }`}
-              >
-                {item.label} ({item.count})
-              </button>
-            );
-          })}
-        </div>
+        <StatusTabs tabs={tabs} active={activeTab} onSelect={setTab} />
 
         <div id="shift-panel" role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
           <ShiftsTable

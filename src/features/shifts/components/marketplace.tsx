@@ -5,11 +5,12 @@ import { useState } from "react";
 import { CredentialBanner } from "@/features/credentials/components/credential-banner";
 import type { CredentialStatus } from "@/features/credentials/status";
 import { apiFetch } from "@/shared/client/api-client";
-import { ChevronDownIcon, ShieldCheckIcon } from "@/shared/ui/icons";
+import { ShieldCheckIcon } from "@/shared/ui/icons";
 
 import { formatDate } from "../schedule";
 import { useServerRefresh } from "../use-server-refresh";
 import { SHIFT_ROLES, type MarketplaceShift, type ShiftDTO } from "../types";
+import { ALL, FilterSelect } from "./filter-select";
 import { MyShiftsTable } from "./my-shifts-table";
 import { OpenShiftsTable } from "./open-shifts-table";
 import { ReopenShiftDialog, type ReopenTarget } from "./reopen-shift-dialog";
@@ -22,43 +23,8 @@ type MarketplaceProps = {
 
 type Notice = { kind: "success" | "error"; message: string };
 
-const ALL = "all";
-
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
-}
-
-function FilterSelect({
-  label,
-  allLabel,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  allLabel: string;
-  value: string;
-  options: readonly string[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="relative">
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 appearance-none rounded-control border border-input-border bg-surface pl-3 pr-9 text-sm"
-      >
-        <option value={ALL}>{allLabel}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <ChevronDownIcon className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2" />
-    </div>
-  );
 }
 
 export function Marketplace({ openShifts, myShifts, credential }: MarketplaceProps) {
@@ -171,14 +137,14 @@ export function Marketplace({ openShifts, myShifts, credential }: MarketplacePro
                 label="Agency"
                 allLabel="All agencies"
                 value={agency}
-                options={agencies}
+                options={agencies.map((name) => ({ value: name, label: name }))}
                 onChange={setAgency}
               />
               <FilterSelect
                 label="Role"
                 allLabel="All roles"
                 value={role}
-                options={SHIFT_ROLES}
+                options={SHIFT_ROLES.map((name) => ({ value: name, label: name }))}
                 onChange={setRole}
               />
             </div>
