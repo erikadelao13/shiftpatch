@@ -79,7 +79,7 @@ src/
     (workspace)/
       (standard)/               # implemented: signed-in header, sign-out
         layout.tsx
-        nurse/page.tsx          # placeholder until the shifts plan
+        nurse/                    # implemented: sidebar shell, marketplace and My shifts UI (claim route pending)
         admin/page.tsx          # placeholder until the shifts plan
       agency/                   # implemented: sidebar shell and shift board UI
         layout.tsx
