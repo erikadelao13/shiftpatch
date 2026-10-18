@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { CloseIcon, InfoIcon } from "@/shared/ui/icons";
 
 import { formatDate, formatTimeRange } from "../schedule";
-import type { AgencyShift } from "../types";
+import { CANCELLATION_REASONS, type AgencyShift, type CancellationReason } from "../types";
 
-export type ReopenVariant = "cancel" | "no-show";
+export type ReopenMode = "nurse" | "agency";
 
 export type ReopenTarget = Pick<AgencyShift, "id" | "role" | "date" | "startTime" | "endTime"> & {
   agencyName: string;
@@ -15,40 +15,52 @@ export type ReopenTarget = Pick<AgencyShift, "id" | "role" | "date" | "startTime
 };
 
 type ReopenShiftDialogProps = {
-  variant: ReopenVariant;
+  mode: ReopenMode;
   shift: ReopenTarget | null;
   onClose: () => void;
-  onConfirm: (shift: ReopenTarget) => Promise<void>;
+  onConfirm: (shift: ReopenTarget, reason: CancellationReason) => Promise<void>;
 };
 
-const COPY = {
-  cancel: {
-    title: "Cancel this assignment?",
-    description: () => "You’ll be removed from this shift so another nurse can claim it.",
-    consequence: () => "The shift will reopen as available.",
-    keep: "Keep assignment",
+const REASON_LABELS: Record<CancellationReason, string> = {
+  advance: "In advance",
+  "no-show": "No-show",
+};
+
+const REASON_COPY = {
+  advance: {
+    description: (nurse: string) => `Confirm that ${nurse} is being removed from this shift in advance.`,
     confirm: "Cancel assignment",
     confirming: "Cancelling…",
     failure: "Could not cancel this assignment.",
   },
   "no-show": {
-    title: "Report a no-show?",
     description: (nurse: string) => `Confirm that ${nurse} did not attend this shift.`,
-    consequence: (nurse: string) => `${nurse} will be unassigned and the shift will reopen.`,
-    keep: "Go back",
     confirm: "Report no-show",
     confirming: "Reporting…",
     failure: "Could not report the no-show.",
   },
 } as const;
 
-export function ReopenShiftDialog({ variant, shift, onClose, onConfirm }: ReopenShiftDialogProps) {
+const NURSE_COPY = {
+  title: "Cancel this assignment?",
+  description: "You’ll be removed from this shift so another nurse can claim it.",
+  consequence: "The shift will reopen as available.",
+  keep: "Keep assignment",
+} as const;
+
+export function ReopenShiftDialog({ mode, shift, onClose, onConfirm }: ReopenShiftDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const copy = COPY[variant];
+  const [agencyReason, setAgencyReason] = useState<CancellationReason>("advance");
+  const reason = mode === "agency" ? agencyReason : "advance";
+  const copy = REASON_COPY[reason];
   const nurse = shift?.nurseName ?? "The nurse";
   const open = shift !== null;
+  const title = mode === "agency" ? `Cancel ${nurse}’s assignment?` : NURSE_COPY.title;
+  const description = mode === "agency" ? copy.description(nurse) : NURSE_COPY.description;
+  const consequence =
+    mode === "agency" ? `${nurse} will be unassigned and the shift will reopen.` : NURSE_COPY.consequence;
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -59,6 +71,7 @@ export function ReopenShiftDialog({ variant, shift, onClose, onConfirm }: Reopen
 
   function handleClose() {
     setError(null);
+    setAgencyReason("advance");
     onClose();
   }
 
@@ -67,7 +80,7 @@ export function ReopenShiftDialog({ variant, shift, onClose, onConfirm }: Reopen
     setError(null);
     setPending(true);
     try {
-      await onConfirm(shift);
+      await onConfirm(shift, reason);
       dialogRef.current?.close();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : copy.failure);
@@ -95,10 +108,10 @@ export function ReopenShiftDialog({ variant, shift, onClose, onConfirm }: Reopen
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 id="reopen-shift-title" className="font-display text-3xl leading-[1.15]">
-                {copy.title}
+                {title}
               </h2>
               <p id="reopen-shift-description" className="mt-2 text-text-muted">
-                {copy.description(nurse)}
+                {description}
               </p>
             </div>
             <button
@@ -133,7 +146,7 @@ export function ReopenShiftDialog({ variant, shift, onClose, onConfirm }: Reopen
             <dd className="tabular-nums text-text-muted">
               {formatTimeRange(shift)} · Facility-local time
             </dd>
-            {variant === "no-show" ? (
+            {mode === "agency" ? (
               <>
                 <dt className="sr-only">Assigned nurse</dt>
                 <dd>
@@ -144,7 +157,7 @@ export function ReopenShiftDialog({ variant, shift, onClose, onConfirm }: Reopen
             ) : null}
           </dl>
 
-          {variant === "cancel" ? (
+          {mode === "nurse" ? (
             <div className="flex flex-col gap-2">
               <label htmlFor="reopen-reason" className="text-sm font-medium">
                 Cancellation reason
@@ -153,15 +166,34 @@ export function ReopenShiftDialog({ variant, shift, onClose, onConfirm }: Reopen
                 id="reopen-reason"
                 type="text"
                 readOnly
-                value="In advance"
+                value={REASON_LABELS.advance}
                 className="h-11 w-full rounded-control border border-input-border bg-surface-subtle px-3 text-base"
               />
             </div>
-          ) : null}
+          ) : (
+            <fieldset disabled={pending} className="flex flex-col gap-2">
+              <legend className="text-sm font-medium">Cancellation reason</legend>
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+                {CANCELLATION_REASONS.map((option) => (
+                  <label key={option} className="flex min-h-11 items-center gap-2">
+                    <input
+                      type="radio"
+                      name="reopen-reason"
+                      value={option}
+                      checked={agencyReason === option}
+                      onChange={() => setAgencyReason(option)}
+                      className="size-5 accent-brand-800"
+                    />
+                    {REASON_LABELS[option]}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
 
           <p className="flex items-center gap-2 text-sm text-text-muted">
             <InfoIcon className="size-5 shrink-0" />
-            {copy.consequence(nurse)}
+            {consequence}
           </p>
 
           <div className="flex flex-col-reverse gap-3 sm:flex-row">
@@ -171,7 +203,7 @@ export function ReopenShiftDialog({ variant, shift, onClose, onConfirm }: Reopen
               onClick={() => dialogRef.current?.close()}
               className="h-12 rounded-control sm:flex-1 border border-brand-800 bg-surface px-5 font-medium text-brand-800 hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {copy.keep}
+              {mode === "agency" ? "Go back" : NURSE_COPY.keep}
             </button>
             <button
               type="button"

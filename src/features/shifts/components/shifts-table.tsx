@@ -7,16 +7,16 @@ type ShiftsTableProps = {
   shifts: readonly AgencyShift[];
   agencyName: string;
   emptyMessage: string;
-  onReportNoShow: (shift: AgencyShift) => void;
+  onCancel: (shift: AgencyShift) => void;
 };
 
-function NoShowButton({
+function CancelShiftButton({
   shift,
-  onReportNoShow,
+  onCancel,
   className,
 }: {
   shift: AgencyShift;
-  onReportNoShow: (shift: AgencyShift) => void;
+  onCancel: (shift: AgencyShift) => void;
   className?: string;
 }) {
   if (shift.status !== "filled") return null;
@@ -24,16 +24,16 @@ function NoShowButton({
     <button
       type="button"
       data-testid="shift-cancel-button"
-      aria-label={`Report no-show for ${shift.role} shift on ${formatDate(shift.date)}`}
-      onClick={() => onReportNoShow(shift)}
+      aria-label={`Cancel ${shift.role} shift on ${formatDate(shift.date)} for ${shift.nurseName ?? "the assigned nurse"}`}
+      onClick={() => onCancel(shift)}
       className={`h-11 rounded-control border border-input-border bg-surface px-4 font-medium hover:bg-surface-subtle ${className ?? ""}`}
     >
-      Report no-show
+      Cancel shift
     </button>
   );
 }
 
-export function ShiftsTable({ shifts, agencyName, emptyMessage, onReportNoShow }: ShiftsTableProps) {
+export function ShiftsTable({ shifts, agencyName, emptyMessage, onCancel }: ShiftsTableProps) {
   if (shifts.length === 0) {
     return <p className="px-5 py-10 text-center text-text-muted sm:px-6">{emptyMessage}</p>;
   }
@@ -71,7 +71,7 @@ export function ShiftsTable({ shifts, agencyName, emptyMessage, onReportNoShow }
                   <StatusBadge status={shift.status} />
                 </td>
                 <td className="px-6 py-3 text-right">
-                  <NoShowButton shift={shift} onReportNoShow={onReportNoShow} />
+                  <CancelShiftButton shift={shift} onCancel={onCancel} />
                 </td>
               </tr>
             ))}
@@ -96,7 +96,7 @@ export function ShiftsTable({ shifts, agencyName, emptyMessage, onReportNoShow }
             <div className="text-sm">
               <AssignedNurse name={shift.nurseName} />
             </div>
-            <NoShowButton shift={shift} onReportNoShow={onReportNoShow} className="w-full" />
+            <CancelShiftButton shift={shift} onCancel={onCancel} className="w-full" />
           </li>
         ))}
       </ul>

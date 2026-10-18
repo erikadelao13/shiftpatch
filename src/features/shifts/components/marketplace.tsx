@@ -98,10 +98,15 @@ export function Marketplace({ openShifts, myShifts, credential }: MarketplacePro
 
   async function cancelAssignment(shift: ReopenTarget) {
     setNotice(null);
-    await apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/cancel`, {
-      method: "POST",
-      body: JSON.stringify({ reason: "advance" }),
-    });
+    try {
+      await apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "advance" }),
+      });
+    } catch (failure) {
+      await refresh();
+      throw failure;
+    }
     await refresh();
     setNotice({
       kind: "success",
@@ -265,7 +270,7 @@ export function Marketplace({ openShifts, myShifts, credential }: MarketplacePro
       </aside>
 
       <ReopenShiftDialog
-        variant="cancel"
+        mode="nurse"
         shift={cancelTarget}
         onClose={() => setCancelTarget(null)}
         onConfirm={cancelAssignment}
