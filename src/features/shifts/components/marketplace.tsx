@@ -62,7 +62,7 @@ function FilterSelect({
 
 export function Marketplace({ openShifts, myShifts, credential }: MarketplaceProps) {
   const router = useRouter();
-  const [, startRefresh] = useTransition();
+  const [refreshing, startRefresh] = useTransition();
   const [agency, setAgency] = useState(ALL);
   const [role, setRole] = useState(ALL);
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -189,7 +189,12 @@ export function Marketplace({ openShifts, myShifts, credential }: MarketplacePro
               ) : null}
             </div>
           ) : (
-            <OpenShiftsTable shifts={filtered} claimingId={claimingId} onClaim={claim} />
+            <OpenShiftsTable
+              shifts={filtered}
+              claimingId={claimingId}
+              busy={claimingId !== null || refreshing}
+              onClaim={claim}
+            />
           )}
         </div>
 

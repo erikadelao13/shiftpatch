@@ -5,10 +5,11 @@ import { StatusBadge } from "./status-badge";
 type OpenShiftsTableProps = {
   shifts: readonly MarketplaceShift[];
   claimingId: string | null;
+  busy: boolean;
   onClaim: (shift: MarketplaceShift) => void;
 };
 
-export function OpenShiftsTable({ shifts, claimingId, onClaim }: OpenShiftsTableProps) {
+export function OpenShiftsTable({ shifts, claimingId, busy, onClaim }: OpenShiftsTableProps) {
   return (
     <table className="w-full text-left text-sm">
       <thead className="hidden bg-surface-subtle text-text-muted md:table-header-group">
@@ -50,7 +51,7 @@ export function OpenShiftsTable({ shifts, claimingId, onClaim }: OpenShiftsTable
                 <button
                   type="button"
                   data-testid="shift-claim-button"
-                  disabled={claimingId !== null}
+                  disabled={busy}
                   aria-label={`Claim ${shift.role} shift on ${formatDate(shift.date)} with ${shift.agencyName}`}
                   onClick={() => onClaim(shift)}
                   className="h-11 w-full rounded-control bg-brand-800 px-5 font-medium text-on-brand hover:bg-brand-900 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
