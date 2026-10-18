@@ -77,3 +77,8 @@ export const fixtureShifts = [
     claimedById: null,
   },
 ] as const;
+
+export const fixtureCredentials = [
+  { nurseId: "nurse-1", expiresOn: "2027-01-01" },
+  { nurseId: "nurse-2", expiresOn: "2026-06-01" },
+] as const;

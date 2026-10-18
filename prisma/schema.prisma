@@ -23,6 +23,10 @@ enum ShiftStatus {
   filled
 }
 
+enum AuditAction {
+  shift_claimed
+}
+
 model Agency {
   id     String  @id
   name   String
@@ -40,6 +44,8 @@ model User {
   passwordHash  String
   sessions      ApiSession[]
   claimedShifts Shift[]
+  credential    Credential?
+  auditEvents   AuditEvent[]
 }
 
 model ApiSession {
@@ -75,4 +81,26 @@ model Shift {
   createdAt   DateTime    @default(now())
 
   @@index([agencyId, date, startTime])
+}
+
+model Credential {
+  id        String   @id @default(uuid())
+  nurseId   String   @unique
+  nurse     User     @relation(fields: [nurseId], references: [id], onDelete: Cascade)
+  expiresOn DateTime @db.Date
+  updatedAt DateTime @updatedAt
+}
+
+model AuditEvent {
+  id           String      @id @default(uuid())
+  actorId      String
+  actor        User        @relation(fields: [actorId], references: [id])
+  action       AuditAction
+  resourceType String
+  resourceId   String
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+
+  @@index([createdAt])
+  @@index([resourceType, resourceId])
 }

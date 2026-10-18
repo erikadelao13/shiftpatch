@@ -7,6 +7,7 @@ import { assertDevBranch } from "./branch-guard";
 import {
   FIXTURE_PASSWORD,
   fixtureAgencies,
+  fixtureCredentials,
   fixtureShifts,
   fixtureUsers,
 } from "./fixtures";
@@ -51,8 +52,17 @@ async function main() {
       });
     }
 
+    for (const credential of fixtureCredentials) {
+      const data = { ...credential, expiresOn: new Date(credential.expiresOn) };
+      await prisma.credential.upsert({
+        where: { nurseId: credential.nurseId },
+        update: data,
+        create: data,
+      });
+    }
+
     console.log(
-      `Seeded ${fixtureAgencies.length} agencies, ${fixtureUsers.length} users and ${fixtureShifts.length} shifts on branch "${process.env.NEON_BRANCH}".`,
+      `Seeded ${fixtureAgencies.length} agencies, ${fixtureUsers.length} users, ${fixtureShifts.length} shifts and ${fixtureCredentials.length} credentials on branch "${process.env.NEON_BRANCH}".`,
     );
   } finally {
     await prisma.$disconnect();
