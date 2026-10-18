@@ -22,3 +22,13 @@ export type AgencyShift = Pick<
 > & {
   nurseName: string | null;
 };
+
+export type MarketplaceShift = Pick<
+  ShiftDTO,
+  "id" | "role" | "date" | "startTime" | "endTime" | "agencyName"
+>;
+
+export type NurseMarketplace = {
+  openShifts: MarketplaceShift[];
+  myShifts: MarketplaceShift[];
+};

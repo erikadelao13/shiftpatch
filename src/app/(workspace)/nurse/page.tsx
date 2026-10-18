@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 
 import { requireRole } from "@/features/auth/server/current-user";
+import { getCredentialExpiry } from "@/features/credentials/server/credential-service";
+import { getCredentialStatus, todayIsoDate } from "@/features/credentials/status";
+import { Marketplace } from "@/features/shifts/components/marketplace";
+import { getNurseMarketplace } from "@/features/shifts/server/shift-service";
 
 export default function NursePage() {
   return (
@@ -12,16 +16,16 @@ export default function NursePage() {
 
 async function NurseWorkspace() {
   const user = await requireRole("nurse");
+  const [{ openShifts, myShifts }, expiresOn] = await Promise.all([
+    getNurseMarketplace(user.id),
+    getCredentialExpiry(user.id),
+  ]);
 
   return (
-    <section className="flex flex-col gap-3">
-      <h1 className="font-display text-4xl leading-[1.12] text-brand-800">
-        Welcome, {user.name}
-      </h1>
-      <h2 className="text-lg font-medium">Your shifts will live here</h2>
-      <p className="max-w-xl text-text-muted">
-        Browsing and claiming open shifts, credentials and timesheets arrive in upcoming releases.
-      </p>
-    </section>
+    <Marketplace
+      openShifts={openShifts}
+      myShifts={myShifts}
+      credential={getCredentialStatus(expiresOn, todayIsoDate())}
+    />
   );
 }

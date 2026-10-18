@@ -1,5 +1,7 @@
 import type { AgencyShift } from "./types";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const MINUTES_PER_DAY = 24 * 60;
 
 function toMinutes(time: string): number {
@@ -53,4 +55,14 @@ export function formatTimeRange(shift: Pick<AgencyShift, "startTime" | "endTime"
 
 export function compareShifts(a: AgencyShift, b: AgencyShift): number {
   return `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`);
+}
+
+export function formatEndsOn(shift: Pick<AgencyShift, "date" | "startTime" | "endTime">): string | null {
+  if (!endsNextDay(shift)) return null;
+  const [year = 0, month = 1, day = 1] = shift.date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day) + DAY_MS).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }

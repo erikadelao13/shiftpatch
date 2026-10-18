@@ -8,7 +8,7 @@ import { HttpError } from "@/shared/server/errors";
 import { getPrisma } from "@/shared/server/db";
 
 import type { NewShiftInput } from "../schemas";
-import type { AgencyShift, ShiftDTO } from "../types";
+import type { AgencyShift, MarketplaceShift, NurseMarketplace, ShiftDTO } from "../types";
 import { canPostShift, canReadAgencyShifts } from "./shift-policy";
 import { toShiftDTO } from "./shift-presenter";
 
@@ -82,6 +82,26 @@ export async function getAgencyBoard(agencyId: string): Promise<AgencyShift[]> {
     status: row.status,
     nurseName: row.claimedBy?.name ?? null,
   }));
+}
+
+export async function getNurseMarketplace(nurseId: string): Promise<NurseMarketplace> {
+  const rows = await getPrisma().shift.findMany({
+    where: { OR: [{ status: "open" }, { claimedById: nurseId }] },
+    include: { agency: { select: { name: true } } },
+    orderBy: [...inScheduleOrder],
+  });
+  const toMarketplaceShift = (row: (typeof rows)[number]): MarketplaceShift => ({
+    id: row.id,
+    role: row.role,
+    date: row.date.toISOString().slice(0, 10),
+    startTime: row.startTime,
+    endTime: row.endTime,
+    agencyName: row.agency.name,
+  });
+  return {
+    openShifts: rows.filter((row) => row.status === "open").map(toMarketplaceShift),
+    myShifts: rows.filter((row) => row.claimedById === nurseId).map(toMarketplaceShift),
+  };
 }
 
 export const getAgencyName = cache(async (agencyId: string): Promise<string> => {
