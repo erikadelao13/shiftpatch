@@ -19,12 +19,12 @@ async function tokenFor(request: APIRequestContext, email: string) {
   return token;
 }
 
-async function signIn(page: Page, email: string) {
+async function signIn(page: Page, email: string, landing: RegExp = /\/nurse$/) {
   await page.goto("/login");
   await page.getByTestId("login-email-input").fill(email);
   await page.getByTestId("login-password-input").fill(PASSWORD);
   await page.getByTestId("login-submit-button").click();
-  await expect(page).toHaveURL(/\/nurse$/);
+  await expect(page).toHaveURL(landing);
 
   const cookies = await page.context().cookies();
   const session = cookies.find((cookie) => cookie.name === "shiftpatch_session");
@@ -63,8 +63,8 @@ test.describe("the nurse timesheet", () => {
     await expect(row).toContainText("12h");
     await expect(row).toContainText("Not recorded");
 
-    await expect(card(page, "Recorded work hours")).toHaveText("—");
-    await expect(page.getByText("No work hours recorded")).toBeVisible();
+    await expect(card(page, "Cancelled or no-show")).toBeVisible();
+    await expect(page.getByText("Not counted in scheduled hours")).toBeVisible();
   });
 
   test("a nurse with no assignments sees the empty state, then a claim after Refresh", async ({
@@ -117,5 +117,163 @@ test.describe("the nurse timesheet", () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
+
+const AGENCY_A = "admin@sunrisehealth.example";
+const AGENCY_B = "admin@metrocare.example";
+const ADMIN = "alex.kim@example.com";
+
+type History = { nurse: { id: string; email: string } };
+
+async function createHistory(request: APIRequestContext, month: string): Promise<History> {
+  const nurse = await createNurse({ expiresOn: "2099-12-31" });
+  userIds.push(nurse.id);
+  emails.push(nurse.email);
+  const agencyToken = await tokenFor(request, AGENCY_A);
+  const nurseToken = await tokenFor(request, nurse.email);
+  const post = async (date: string) => {
+    const response = await request.post("/api/shifts", {
+      headers: { Authorization: `Bearer ${agencyToken}` },
+      data: { role: "RN", date, startTime: "07:00", endTime: "19:00" },
+    });
+    expect(response.status()).toBe(201);
+    const { id } = await response.json();
+    shiftIds.push(id);
+    return id as string;
+  };
+  const send = async (path: string, token: string, data?: unknown) => {
+    const response = await request.post(path, { headers: { Authorization: `Bearer ${token}` }, data });
+    expect(response.status()).toBe(200);
+  };
+
+  const shiftA = await post(`2035-${month}-01`);
+  await send(`/api/shifts/${shiftA}/claim`, nurseToken);
+  await send(`/api/shifts/${shiftA}/cancel`, nurseToken, { reason: "advance" });
+  await send(`/api/shifts/${shiftA}/claim`, nurseToken);
+
+  const shiftB = await post(`2035-${month}-02`);
+  await send(`/api/shifts/${shiftB}/claim`, nurseToken);
+  await send(`/api/shifts/${shiftB}/cancel`, agencyToken, { reason: "no-show" });
+
+  return { nurse };
+}
+
+const tableRows = (page: Page) => page.getByTestId("timesheet-table").getByRole("row");
+const rowOn = (page: Page, date: RegExp, pill: string) =>
+  tableRows(page).filter({ hasText: date }).filter({ hasText: pill });
+
+async function expectCardsAgreeWithRows(page: Page) {
+  const assigned = await tableRows(page).filter({ hasText: "Assigned" }).count();
+  const history = await tableRows(page).filter({ hasText: /Cancelled|No-show/ }).count();
+  await expect(card(page, "Assigned shifts")).toHaveText(String(assigned));
+  await expect(card(page, "Cancelled or no-show")).toHaveText(String(history));
+}
+
+test.describe("assignment history", () => {
+  test("the nurse sees history rows that do not count toward the totals", async ({ page, request }) => {
+    const { nurse } = await createHistory(request, "05");
+
+    await openTimesheets(page, nurse.email);
+
+    await expect(page.getByTestId("timesheet-table")).toHaveCount(1);
+    await expect(tableRows(page)).toHaveCount(4);
+    const cancelled = rowOn(page, /May 1, 2035/, "Cancelled");
+    const assigned = rowOn(page, /May 1, 2035/, "Assigned");
+    const noShow = rowOn(page, /May 2, 2035/, "No-show");
+    await expect(cancelled).toContainText("Not counted");
+    await expect(noShow).toContainText("Not counted");
+    await expect(assigned).not.toContainText("Not counted");
+    for (const row of [cancelled, assigned, noShow]) await expect(row).toContainText("Not recorded");
+
+    await expect(card(page, "Assigned shifts")).toHaveText("1");
+    await expect(card(page, "Scheduled hours")).toHaveText("12h");
+    await expect(card(page, "Cancelled or no-show")).toHaveText("2");
+    await expect(shiftHours(page)).toContainText("1 assigned shift");
+    await expect(shiftHours(page)).toContainText("2 cancelled or no-show");
+    await expect(shiftHours(page)).toContainText("Total scheduled: 12h");
+  });
+
+  test("an agency sees its own rows and the nurse, and another agency sees none", async ({
+    page,
+    request,
+  }) => {
+    await createHistory(request, "06");
+
+    await signIn(page, AGENCY_A, /\/agency$/);
+    const nav = page.getByRole("navigation", { name: "Agency" });
+    await expect(nav.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+    await nav.getByRole("link", { name: "Timesheets" }).click();
+    await expect(page).toHaveURL(/\/agency\/timesheets$/);
+    await expect(nav.getByRole("link", { name: "Timesheets" })).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link", { name: "Overview" })).not.toHaveAttribute("aria-current", "page");
+
+    await expect(page.getByRole("heading", { name: "Every assignment, accounted for." })).toBeVisible();
+    await expect(page.getByTestId("timesheet-table")).toHaveCount(1);
+    for (const [date, pill] of [
+      [/Jun 1, 2035/, "Cancelled"],
+      [/Jun 1, 2035/, "Assigned"],
+      [/Jun 2, 2035/, "No-show"],
+    ] as const) {
+      await expect(rowOn(page, date, pill)).toContainText("Throwaway Nurse");
+    }
+    await expectCardsAgreeWithRows(page);
+
+    await page.context().clearCookies();
+    await signIn(page, AGENCY_B, /\/agency$/);
+    await page.goto("/agency/timesheets");
+    await expect(page.getByRole("heading", { name: "Every assignment, accounted for." })).toBeVisible();
+    await expect(page.getByText(/Jun [12], 2035/)).toHaveCount(0);
+  });
+
+  test("the admin sees every agency with Agency and Nurse columns", async ({ page, request }) => {
+    await createHistory(request, "07");
+
+    await signIn(page, ADMIN, /\/admin$/);
+    const nav = page.getByRole("navigation", { name: "Administration" });
+    await nav.getByRole("link", { name: "Timesheets" }).click();
+    await expect(page).toHaveURL(/\/admin\/timesheets$/);
+    await expect(nav.getByRole("link", { name: "Timesheets" })).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link", { name: "Shift overview" })).not.toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    await expect(page.getByRole("heading", { name: "Hours across every agency." })).toBeVisible();
+    await expect(page.getByTestId("timesheet-table")).toHaveCount(1);
+    await expect(page.getByRole("columnheader", { name: "Agency" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Nurse" })).toBeVisible();
+    await expect(rowOn(page, /Jul 1, 2035/, "Assigned")).toContainText("Sunrise Health Staffing");
+    await expect(rowOn(page, /Jul 2, 2035/, "No-show")).toContainText("Throwaway Nurse");
+    await expectCardsAgreeWithRows(page);
+  });
+
+  test("a nurse is redirected away from the admin and agency timesheets", async ({ page }) => {
+    await signIn(page, "maria.lopez@example.com");
+
+    await page.goto("/admin/timesheets");
+    await expect(page).toHaveURL(/\/nurse$/);
+    await page.goto("/agency/timesheets");
+    await expect(page).toHaveURL(/\/nurse$/);
+  });
+
+  test("the admin table fits at 375px and 1280px", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await signIn(page, ADMIN, /\/admin$/);
+    await page.goto("/admin/timesheets");
+    await expect(page.getByTestId("timesheet-table")).toHaveCount(1);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(page.getByRole("columnheader", { name: "Worked hours" })).toBeVisible();
+    const widths = await page.evaluate(() => {
+      const table = document.querySelector('[data-testid="timesheet-table"]');
+      const panel = table?.closest("section");
+      return { table: table?.scrollWidth ?? 0, panel: panel?.clientWidth ?? 0 };
+    });
+    expect(widths.table).toBeLessThanOrEqual(widths.panel);
   });
 });

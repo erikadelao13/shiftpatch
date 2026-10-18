@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
 import { requireRole } from "@/features/auth/server/current-user";
-import { getNurseMarketplace } from "@/features/shifts/server/shift-service";
 import { Timesheet } from "@/features/timesheets/components/timesheet";
+import { listTimesheetEntries } from "@/features/timesheets/server/timesheet-service";
 
 export default function TimesheetsPage() {
   return (
@@ -14,7 +14,7 @@ export default function TimesheetsPage() {
 
 async function TimesheetWorkspace() {
   const user = await requireRole("nurse");
-  const { myShifts } = await getNurseMarketplace(user.id);
+  const entries = await listTimesheetEntries({ kind: "nurse", nurseId: user.id });
 
-  return <Timesheet shifts={myShifts} />;
+  return <Timesheet audience="nurse" entries={entries} />;
 }
