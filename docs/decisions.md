@@ -127,6 +127,20 @@ Agent defaults, not yet reviewed by the owner:
 - No new API route; `getAdminBoard` takes no actor, and the page's `requireRole("admin")` authorizes.
 - `error.tsx` exists for the admin segment only.
 
+### 2026-10-18: credential upload UI decisions
+
+Owner decisions:
+
+- **Build the UI first**, following the supplied credentials mockup. The route and storage come later.
+
+Agent defaults, not yet reviewed by the owner:
+
+- **`POST /api/credentials`** with `multipart/form-data` fields `file` and `expiresOn`. Until the route exists, saving fails visibly; nothing fakes a success.
+- **A 4 MB limit**, not the mockup's 5 MB, because a Vercel Function rejects request bodies over 4.5 MB.
+- **PDF, JPEG and PNG only**, as the mockup lists.
+- **A past expiry date is accepted.** Nothing in the packet says whether a nurse may record an already-expired credential; saving one would make claims fail.
+- **No "authorized users" footer**, because document read access beyond the nurse is undefined.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.

@@ -1,6 +1,6 @@
 # ShiftPatch Architecture
 
-> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). Credential upload, the audit view and timesheets are pending.
+> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). The credential upload page is built (§9) but its route is not, so saving cannot succeed yet. The audit view and timesheets are pending.
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
@@ -122,8 +122,8 @@ src/
       server/shift-presenter.ts # implemented: toShiftDTO and toCancelledShiftDTO, explicit serializers; the only place that maps the database's `no_show` to the API's `"no-show"`
     credentials/
       status.ts                 # implemented: getCredentialStatus, todayIsoDate
-      components/               # implemented: credential banner
-      schemas.ts
+      components/               # implemented: credential banner, upload form, current credential card
+      schemas.ts                # implemented: credentialFileSchema and credentialUploadSchema, for the form and the planned route
       server/credential-service.ts   # implemented: getCredentialExpiry reads the Credential table
     audit/
       components/
@@ -381,6 +381,8 @@ A claim/cancel transaction either persists its state change and audit history to
 ### Credential upload
 
 Authenticate ownership, enforce a modest documented size limit, allow only supported document types, and validate bytes where practical. Generate server-side storage names rather than trusting uploaded paths. Store the file privately; serve downloads through an authorized endpoint. Keep file metadata and expiry in Postgres [F1].
+
+**Implemented (2026-10-18): the upload page, not the route.** `/nurse/credentials` validates with `credentialUploadSchema` and then posts `multipart/form-data` to `POST /api/credentials`, with the document in `file` and the date in `expiresOn` (`YYYY-MM-DD`). Neither the route nor the `Credential` file columns exist yet, so every save currently fails with "Something went wrong. Try again." and changes nothing. `apiFetch` sets `Content-Type: application/json` only for a string body, so the browser can write the multipart boundary. Proposals, not yet reviewed by the owner: the route path and field names; PDF, JPEG or PNG only; a 4 MB limit, because a Vercel Function rejects request bodies over 4.5 MB and a direct-to-Blob client upload would add a token route; the route should run `credentialUploadSchema` again and check the file's leading bytes, since the browser's MIME type comes from the file name.
 
 Object storage and Postgres do not share a transaction. If metadata persistence fails after upload, attempt deletion of the new blob. When replacing a file, commit the new reference before removing the old blob. Report cleanup failures without leaking document contents.
 
