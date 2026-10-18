@@ -16,9 +16,11 @@ export async function expectHttpError(promise: Promise<unknown>, status: number,
 
 export async function assertSeededState(): Promise<void> {
   const prisma = getPrisma();
-  const [shifts, credentials] = await Promise.all([
+  const nurseIds = fixtureCredentials.map((c) => c.nurseId);
+  const [shifts, credentials, documents] = await Promise.all([
     prisma.shift.findMany({ where: { id: { in: fixtureShifts.map((shift) => shift.id) } } }),
-    prisma.credential.findMany({ where: { nurseId: { in: fixtureCredentials.map((c) => c.nurseId) } } }),
+    prisma.credential.findMany({ where: { nurseId: { in: nurseIds } } }),
+    prisma.credentialDocument.count({ where: { credential: { nurseId: { in: nurseIds } } } }),
   ]);
   const shiftsMatch =
     shifts.length === fixtureShifts.length &&
@@ -33,7 +35,7 @@ export async function assertSeededState(): Promise<void> {
         fixtureCredentials.find((c) => c.nurseId === row.nurseId)?.expiresOn ===
         row.expiresOn.toISOString().slice(0, 10),
     );
-  if (!shiftsMatch || !credentialsMatch) {
-    throw new Error("The seeded shifts or credentials are missing or changed. Run `pnpm db:seed` first.");
+  if (!shiftsMatch || !credentialsMatch || documents > 0) {
+    throw new Error("The seeded shifts or credentials are missing or changed, or a seeded nurse has a document. Run `pnpm db:seed` first.");
   }
 }

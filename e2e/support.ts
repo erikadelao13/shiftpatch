@@ -1,6 +1,9 @@
 import { loadEnvConfig } from "@next/env";
+import { randomUUID } from "node:crypto";
+
 import { Pool } from "pg";
 
+import { hashPassword } from "../src/features/auth/server/password";
 import { assertDevBranch } from "../prisma/branch-guard";
 
 // Playwright's own process doesn't load Next's env files. The dev server it
@@ -29,15 +32,46 @@ export function sessionIdOf(token: string): string | undefined {
   }
 }
 
+export type ThrowawayNurse = { id: string; email: string; name: string };
+
+export async function createNurse(options: { expiresOn: string }): Promise<ThrowawayNurse> {
+  assertDevBranch("create an end-to-end test nurse");
+  const id = `test-${randomUUID()}`;
+  const nurse = { id, email: `${id}@example.test`, name: "Throwaway Nurse" };
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED });
+  try {
+    await pool.query(
+      'insert into "User" (id, email, name, role, "passwordHash") values ($1, $2, $3, \'nurse\', $4)',
+      [nurse.id, nurse.email, nurse.name, await hashPassword(PASSWORD)],
+    );
+    await pool.query(
+      'insert into "Credential" (id, "nurseId", "expiresOn", "updatedAt") values ($1, $2, $3, now())',
+      [randomUUID(), nurse.id, options.expiresOn],
+    );
+  } finally {
+    await pool.end();
+  }
+  return nurse;
+}
+
 export async function deleteOwnRows(rows: {
   sessionIds?: string[];
   emails?: string[];
   shiftIds?: string[];
+  userIds?: string[];
 }): Promise<void> {
   const sessionIds = rows.sessionIds ?? [];
   const emails = rows.emails ?? [];
   const shiftIds = rows.shiftIds ?? [];
-  if (sessionIds.length === 0 && emails.length === 0 && shiftIds.length === 0) return;
+  const userIds = rows.userIds ?? [];
+  if (
+    sessionIds.length === 0 &&
+    emails.length === 0 &&
+    shiftIds.length === 0 &&
+    userIds.length === 0
+  ) {
+    return;
+  }
 
   assertDevBranch("clean up end-to-end test rows");
   const pool = new Pool({ connectionString: process.env.DATABASE_URL_UNPOOLED });
@@ -45,6 +79,10 @@ export async function deleteOwnRows(rows: {
     if (shiftIds.length > 0) {
       await pool.query('delete from "AuditEvent" where "resourceId" = any($1::text[])', [shiftIds]);
       await pool.query('delete from "Shift" where id = any($1::text[])', [shiftIds]);
+    }
+    if (userIds.length > 0) {
+      await pool.query('delete from "AuditEvent" where "actorId" = any($1::text[])', [userIds]);
+      await pool.query('delete from "User" where id = any($1::text[])', [userIds]);
     }
     if (sessionIds.length > 0) {
       await pool.query('delete from "ApiSession" where id = any($1::text[])', [sessionIds]);

@@ -2,7 +2,7 @@ import "server-only";
 
 import { ZodError } from "zod";
 
-export type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 429;
+export type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 413 | 429;
 
 // An error whose message is safe to show the caller.
 export class HttpError extends Error {

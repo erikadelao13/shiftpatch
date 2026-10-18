@@ -127,6 +127,37 @@ Agent defaults, not yet reviewed by the owner:
 - No new API route; `getAdminBoard` takes no actor, and the page's `requireRole("admin")` authorizes.
 - `error.tsx` exists for the admin segment only.
 
+### 2026-10-18: credential upload UI decisions
+
+Owner decisions:
+
+- **Build the UI first**, following the supplied credentials mockup. The route and storage came next (see the 2026-10-18 upload decisions below).
+
+Agent defaults, not yet reviewed by the owner:
+
+- **`POST /api/credentials`** with `multipart/form-data` fields `file` and `expiresOn`.
+- **A 4 MB limit**, not the mockup's 5 MB, because a Vercel Function rejects request bodies over 4.5 MB.
+- **PDF, JPEG and PNG only**, as the mockup lists.
+- **A past expiry date is rejected** (changed the same day; see below).
+- **No "authorized users" footer**, because document read access beyond the nurse is undefined.
+
+### 2026-10-18: credential upload decisions
+
+Owner decisions, answered while planning:
+
+- **Store the bytes in Postgres**, in a separate `CredentialDocument` table, instead of Private Vercel Blob. This replaces the blob row in ARCHITECTURE §2.
+- **Reject expiry dates before today.** Today is accepted. This replaces the UI decision above that accepted a past date.
+- **Only the nurse downloads a document.** Agency and admin access stays undefined.
+- **Record `credential_updated` audit events** with `{ previousExpiresOn, expiresOn }` and no file name.
+
+Agent proposals, not yet reviewed by the owner:
+
+- **The route contract** in ARCHITECTURE §9: `POST /api/credentials`, `GET /api/credentials/document`, the `200` shape, and the error messages and their order.
+- **`413`** joins the error statuses for the `Content-Length` guard only.
+- **The detected type wins over the declared type.** Only a file that is not a PDF, JPEG or PNG is rejected.
+- **Saves for one nurse are serialized** by locking the nurse's `User` row, so first saves cannot collide and `previousExpiresOn` is accurate.
+- **Re-seeding** deletes the fixture nurses' documents and leaves audit rows alone.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.

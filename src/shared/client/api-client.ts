@@ -4,7 +4,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     response = await fetch(path, {
       ...init,
       headers: {
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...(typeof init.body === "string" ? { "Content-Type": "application/json" } : {}),
         ...init.headers,
       },
     });
