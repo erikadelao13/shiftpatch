@@ -7,9 +7,33 @@ type ShiftsTableProps = {
   shifts: readonly AgencyShift[];
   agencyName: string;
   emptyMessage: string;
+  onReportNoShow: (shift: AgencyShift) => void;
 };
 
-export function ShiftsTable({ shifts, agencyName, emptyMessage }: ShiftsTableProps) {
+function NoShowButton({
+  shift,
+  onReportNoShow,
+  className,
+}: {
+  shift: AgencyShift;
+  onReportNoShow: (shift: AgencyShift) => void;
+  className?: string;
+}) {
+  if (shift.status !== "filled") return null;
+  return (
+    <button
+      type="button"
+      data-testid="shift-cancel-button"
+      aria-label={`Report no-show for ${shift.role} shift on ${formatDate(shift.date)}`}
+      onClick={() => onReportNoShow(shift)}
+      className={`h-11 rounded-control border border-input-border bg-surface px-4 font-medium hover:bg-surface-subtle ${className ?? ""}`}
+    >
+      Report no-show
+    </button>
+  );
+}
+
+export function ShiftsTable({ shifts, agencyName, emptyMessage, onReportNoShow }: ShiftsTableProps) {
   if (shifts.length === 0) {
     return <p className="px-5 py-10 text-center text-text-muted sm:px-6">{emptyMessage}</p>;
   }
@@ -23,7 +47,10 @@ export function ShiftsTable({ shifts, agencyName, emptyMessage }: ShiftsTablePro
               <th scope="col" className="px-6 py-3 font-medium">Shift</th>
               <th scope="col" className="px-4 py-3 font-medium">Date &amp; time</th>
               <th scope="col" className="px-4 py-3 font-medium">Assigned nurse</th>
-              <th scope="col" className="px-6 py-3 font-medium">Status</th>
+              <th scope="col" className="px-4 py-3 font-medium">Status</th>
+              <th scope="col" className="px-6 py-3 text-right font-medium">
+                <span className="sr-only">Action</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -40,8 +67,11 @@ export function ShiftsTable({ shifts, agencyName, emptyMessage }: ShiftsTablePro
                 <td className="px-4 py-3">
                   <AssignedNurse name={shift.nurseName} />
                 </td>
-                <td className="px-6 py-3">
+                <td className="px-4 py-3">
                   <StatusBadge status={shift.status} />
+                </td>
+                <td className="px-6 py-3 text-right">
+                  <NoShowButton shift={shift} onReportNoShow={onReportNoShow} />
                 </td>
               </tr>
             ))}
@@ -66,6 +96,7 @@ export function ShiftsTable({ shifts, agencyName, emptyMessage }: ShiftsTablePro
             <div className="text-sm">
               <AssignedNurse name={shift.nurseName} />
             </div>
+            <NoShowButton shift={shift} onReportNoShow={onReportNoShow} className="w-full" />
           </li>
         ))}
       </ul>

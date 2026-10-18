@@ -6,10 +6,12 @@ import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from "
 import { apiFetch } from "@/shared/client/api-client";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
-import { summarize } from "../schedule";
+import { formatDate, summarize } from "../schedule";
 import type { NewShiftInput } from "../schemas";
+import { useServerRefresh } from "../use-server-refresh";
 import type { AgencyShift, ShiftDTO, ShiftStatus } from "../types";
 import { PostShiftDialog } from "./post-shift-dialog";
+import { ReopenShiftDialog, type ReopenTarget } from "./reopen-shift-dialog";
 import { ShiftsTable } from "./shifts-table";
 import { StatCard } from "./stat-card";
 
@@ -27,6 +29,8 @@ export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
   const [postOpen, setPostOpen] = useState(false);
   const [tab, setTab] = useState<TabKey>("all");
   const [notice, setNotice] = useState<string | null>(null);
+  const [noShowTarget, setNoShowTarget] = useState<ReopenTarget | null>(null);
+  const { refresh } = useServerRefresh();
   const postButtonRef = useRef<HTMLButtonElement>(null);
 
   const summary = summarize(shifts);
@@ -58,6 +62,18 @@ export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
     });
     setTab("all");
     setNotice("Shift posted");
+  }
+
+  async function reportNoShow(shift: ReopenTarget) {
+    setNotice(null);
+    await apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "no-show" }),
+    });
+    await refresh();
+    setNotice(
+      `No-show reported: ${shift.nurseName ?? "The nurse"} was unassigned from the ${shift.role} shift on ${formatDate(shift.date)}. The shift is open again.`,
+    );
   }
 
   function moveTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -184,6 +200,10 @@ export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
             shifts={visible}
             agencyName={agencyName}
             emptyMessage={shifts.length === 0 ? "No shifts posted yet." : "No shifts match these filters."}
+            onReportNoShow={(shift) => {
+              setNotice(null);
+              setNoShowTarget({ ...shift, agencyName });
+            }}
           />
         </div>
 
@@ -215,6 +235,13 @@ export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
           postButtonRef.current?.focus();
         }}
         onPost={postShift}
+      />
+
+      <ReopenShiftDialog
+        variant="no-show"
+        shift={noShowTarget}
+        onClose={() => setNoShowTarget(null)}
+        onConfirm={reportNoShow}
       />
     </div>
   );

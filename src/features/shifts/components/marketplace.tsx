@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import { CredentialBanner } from "@/features/credentials/components/credential-banner";
 import type { CredentialStatus } from "@/features/credentials/status";
@@ -9,9 +8,11 @@ import { apiFetch } from "@/shared/client/api-client";
 import { ChevronDownIcon, ShieldCheckIcon } from "@/shared/ui/icons";
 
 import { formatDate } from "../schedule";
+import { useServerRefresh } from "../use-server-refresh";
 import { SHIFT_ROLES, type MarketplaceShift, type ShiftDTO } from "../types";
 import { MyShiftsTable } from "./my-shifts-table";
 import { OpenShiftsTable } from "./open-shifts-table";
+import { ReopenShiftDialog, type ReopenTarget } from "./reopen-shift-dialog";
 
 type MarketplaceProps = {
   openShifts: MarketplaceShift[];
@@ -61,12 +62,12 @@ function FilterSelect({
 }
 
 export function Marketplace({ openShifts, myShifts, credential }: MarketplaceProps) {
-  const router = useRouter();
-  const [refreshing, startRefresh] = useTransition();
+  const { refresh, refreshing } = useServerRefresh();
   const [agency, setAgency] = useState(ALL);
   const [role, setRole] = useState(ALL);
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<ReopenTarget | null>(null);
 
   const agencies = [...new Set(openShifts.map((shift) => shift.agencyName))].sort();
   const filtered = openShifts.filter(
@@ -91,8 +92,21 @@ export function Marketplace({ openShifts, myShifts, credential }: MarketplacePro
       });
     } finally {
       setClaimingId(null);
-      startRefresh(() => router.refresh());
+      void refresh();
     }
+  }
+
+  async function cancelAssignment(shift: ReopenTarget) {
+    setNotice(null);
+    await apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "advance" }),
+    });
+    await refresh();
+    setNotice({
+      kind: "success",
+      message: `Assignment cancelled: ${shift.role} on ${formatDate(shift.date)} with ${shift.agencyName}. The shift is open again.`,
+    });
   }
 
   return (
@@ -225,7 +239,13 @@ export function Marketplace({ openShifts, myShifts, credential }: MarketplacePro
               You have no assigned shifts yet.
             </p>
           ) : (
-            <MyShiftsTable shifts={myShifts} />
+            <MyShiftsTable
+              shifts={myShifts}
+              onCancel={(shift) => {
+                setNotice(null);
+                setCancelTarget({ ...shift, nurseName: null });
+              }}
+            />
           )}
         </div>
 
@@ -243,6 +263,13 @@ export function Marketplace({ openShifts, myShifts, credential }: MarketplacePro
           <p className="text-sm">Nurses with expired credentials cannot claim shifts.</p>
         </div>
       </aside>
+
+      <ReopenShiftDialog
+        variant="cancel"
+        shift={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={cancelAssignment}
+      />
     </div>
   );
 }
