@@ -110,6 +110,23 @@ Agent defaults, not yet reviewed by the owner:
 - **Race safety** comes from a conditional `updateMany` keyed on the previous nurse, under READ COMMITTED, as in the claim.
 - **A failed cancel refreshes the list** behind the dialog before showing the server's message.
 
+### 2026-10-18: admin shift overview decisions
+
+Owner decisions, made while planning the overview:
+
+- **Follow the approved mockup** for layout and copy.
+- **No "All statuses" dropdown.** Status is only open or filled, so it would duplicate the tabs.
+- **Refresh with the button and when the tab becomes visible again.** No timer.
+- **No admin cancel or no-show action and no cancellation note on the overview**, as in the mockup. The audit log plan shows cancellation history. This amends the 2026-10-17 entry "History is stored, not shown", which expected the admin dashboard to display it.
+
+Agent defaults, not yet reviewed by the owner:
+
+- The full shift ID shows under the role, wrapping, so an admin can match audit entries.
+- Agency options come from the `Agency` table, sorted by name, so an agency with no shifts still appears.
+- The cards and tab counts follow the agency filter; the tab filters only the rows.
+- No new API route; `getAdminBoard` takes no actor, and the page's `requireRole("admin")` authorizes.
+- `error.tsx` exists for the admin segment only.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.

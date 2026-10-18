@@ -1,6 +1,6 @@
 # ShiftPatch Architecture
 
-> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), and cancelling a filled shift or recording a no-show (§3, §5, §6, §8). Credential upload, the audit view and timesheets are pending.
+> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). Credential upload, the audit view and timesheets are pending.
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
@@ -24,7 +24,7 @@ This is a design for the assessment, not evidence of production healthcare compl
 | HTTP API | Route Handlers under `src/app/api`, Node.js runtime | Preserve the exact externally tested routes |
 | Frontend organization | Feature folders | Keep related UI, schemas, and behavior together |
 | Styling | Tailwind CSS with reusable accessible primitives | Consistent UI with limited setup |
-| Client server-state | Proposal: TanStack Query, deferred until a view needs polling or cross-view invalidation. The agency board renders on the server and refreshes with `router.refresh()` after a mutation, through a small same-origin API client | Request lifecycle, mutation state, and query invalidation once more than one view shares shift data |
+| Client server-state | Proposal: TanStack Query, deferred until a view needs polling or cross-view invalidation. The agency board renders on the server and refreshes with `router.refresh()` after a mutation, through a small same-origin API client. The admin shift overview is also a Server Component: it refreshes through `useServerRefresh` from its Refresh button and when the browser tab becomes visible again, with no timer | Request lifecycle, mutation state, and query invalidation once more than one view shares shift data |
 | Persistence | Neon Postgres through Prisma | Persistent hosted data, migrations, and transactional writes |
 | Validation | Zod at HTTP boundaries | Validate untrusted input at runtime |
 | Authentication | Self-managed: `node:crypto` scrypt password hashes, HS256 JWTs signed with `jose`, revocable `ApiSession` rows | One token serves both the required email/password-to-token endpoint and the browser, with no second identity provider (§7, `docs/decisions.md`) |
@@ -77,10 +77,11 @@ src/
     providers.tsx
     login/page.tsx              # implemented
     (workspace)/
-      (standard)/               # implemented: signed-in header, sign-out
+      admin/                    # implemented: sidebar shell and shift overview
         layout.tsx
-        nurse/                    # implemented: sidebar shell, marketplace, claim and My shifts UI
-        admin/page.tsx          # placeholder until the shifts plan
+        page.tsx                # reads every shift and every agency from the database
+        error.tsx               # inline error with "Try again" (retry())
+      nurse/                    # implemented: sidebar shell, marketplace, claim and My shifts UI
       agency/                   # implemented: sidebar shell and shift board UI
         layout.tsx
         page.tsx                # implemented: reads the agency's shifts from the database
@@ -184,7 +185,7 @@ Use Server Components for page shells and session-aware entry points; put forms,
 
 The login form keeps the required test IDs on real controls (`login-email-input`, `login-password-input`, `login-submit-button`), and failures render in `notification-banner`. With `cacheComponents` enabled, every session read sits behind `<Suspense>` so the static shell can still prerender.
 
-Scope query keys by actor and resource. Clear user-specific query state at logout/account changes. After posting, claiming, cancelling, or uploading a credential, invalidate the affected queries. Refetch the visible admin dashboard on focus and at a modest interval; label it as periodically refreshed rather than claiming push-based real-time delivery.
+Scope query keys by actor and resource. Clear user-specific query state at logout/account changes. After posting, claiming, cancelling, or uploading a credential, invalidate the affected queries. Refetch the visible admin dashboard on focus and at a modest interval; label it as periodically refreshed rather than claiming push-based real-time delivery. **Implemented (2026-10-18):** the admin overview re-renders its server data from a Refresh button and on `visibilitychange` to visible, with no interval and no TanStack Query; the agency filter and tab are client state and survive a refresh. `getAdminBoard()` (every shift with agency and nurse names, in schedule order) and `listAgencies()` (by name) in `shift-service.ts` take no actor, like `getAgencyBoard`; the page's `requireRole("admin")` authorizes. No new API route: `GET /api/shifts` already serves the cross-agency list.
 
 Show loading, empty, success, and error states. Disable duplicate submission while a mutation is pending, but keep server concurrency protection. Reconcile from the server response before displaying a completed claim.
 

@@ -107,7 +107,7 @@ This demo treats expiry as self-reported eligibility. It does not independently 
 
 1. The administrator signs in.
 2. The dashboard lists shifts across both agencies, their status, and their assigned nurse where applicable.
-3. Recent changes become visible after a refresh or periodic update.
+3. Recent changes become visible when the administrator presses Refresh or returns to the browser tab; there is no push and no timer.
 4. The administrator can inspect actual audit entries and the lightweight timesheet/assignment view.
 5. Any counts displayed agree with the current table contents or clearly stated filters.
 
@@ -310,7 +310,7 @@ Additions are considered only after the committed core is usable and verified. R
 3. Uploaded expiry is self-reported in this demo.
 4. Historical seeded shifts remain available for the prescribed flows.
 5. Timesheets show assignment/submission state; claimed work is not automatically completed work.
-6. Admin visibility is periodically refreshed, with no promise of instantaneous push updates.
+6. Admin visibility refreshes on demand and when the tab is shown again, with no promise of instantaneous push updates.
 7. The technical spec controls exact fixtures and contracts when examples are abbreviated or incomplete.
 
 Keep these decisions aligned with `ARCHITECTURE.md`. Update this document when user-facing scope or behavior changes; use implementation notes and version control for short-lived progress.
