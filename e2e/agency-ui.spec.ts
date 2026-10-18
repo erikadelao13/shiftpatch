@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 import { deleteOwnRows, PASSWORD, sessionIdOf } from "./support";
 
@@ -139,5 +139,142 @@ test.describe("posting a shift", () => {
     await expect(dialog.getByLabel("End time")).toHaveValue("16:45");
     await expect(dialog.getByLabel("Role")).toHaveValue("LPN");
     await expect(page.getByTestId("agency-post-shift-submit-button")).toBeEnabled();
+  });
+});
+
+async function tokenFor(request: APIRequestContext, email: string) {
+  const response = await request.post("/api/auth/login", { data: { email, password: PASSWORD } });
+  const token = (await response.json()).token as string;
+  const sid = sessionIdOf(token);
+  if (sid) sessionIds.push(sid);
+  return token;
+}
+
+async function filledByMaria(request: APIRequestContext, date: string): Promise<string> {
+  const agency = await tokenFor(request, "admin@sunrisehealth.example");
+  const created = await request.post("/api/shifts", {
+    headers: { Authorization: `Bearer ${agency}` },
+    data: { role: "RN", date, startTime: "07:00", endTime: "19:00" },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  shiftIds.push(id);
+
+  const maria = await tokenFor(request, "maria.lopez@example.com");
+  const claimed = await request.post(`/api/shifts/${id}/claim`, {
+    headers: { Authorization: `Bearer ${maria}` },
+  });
+  expect(claimed.status()).toBe(200);
+  return id;
+}
+
+const NURSE_TITLE = /Cancel Maria Lopez.s assignment\?/;
+
+test.describe("cancelling an assignment", () => {
+  test("a filled row has one cancel button and an open row has none", async ({ page }) => {
+    await signIn(page, "admin@sunrisehealth.example");
+
+    await expect(page.getByRole("row", { name: /Oct 3, 2026/ }).getByTestId("shift-cancel-button")).toHaveCount(1);
+    await expect(page.getByRole("row", { name: /Oct 2, 2026/ }).getByTestId("shift-cancel-button")).toHaveCount(0);
+  });
+
+  test("an advance cancel reopens the row and survives a reload", async ({ page, request }) => {
+    await filledByMaria(request, "2027-07-11");
+    await signIn(page, "admin@sunrisehealth.example");
+
+    await page.getByRole("row", { name: /Jul 11, 2027/ }).getByTestId("shift-cancel-button").click();
+
+    const dialog = page.getByRole("dialog", { name: NURSE_TITLE });
+    await expect(dialog).toContainText("Assigned nurse: Maria Lopez");
+    await expect(dialog.getByRole("radio", { name: "In advance" })).toBeChecked();
+    await expect(dialog.getByRole("radio", { name: "No-show" })).not.toBeChecked();
+    await dialog.getByRole("button", { name: "Cancel assignment" }).click();
+
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId("notification-banner")).toHaveText(
+      /^Assignment cancelled: Maria Lopez was unassigned from the RN shift on Jul 11, 2027\. The shift is open again\./,
+    );
+    const row = page.getByRole("row", { name: /Jul 11, 2027/ });
+    await expect(row).toContainText("Open");
+    await expect(row).toContainText("Unassigned");
+    await expect(row.getByTestId("shift-cancel-button")).toHaveCount(0);
+
+    await page.reload();
+    const reloaded = page.getByRole("row", { name: /Jul 11, 2027/ });
+    await expect(reloaded).toContainText("Open");
+    await expect(reloaded).toContainText("Unassigned");
+  });
+
+  test("a no-show changes the confirm label and the banner", async ({ page, request }) => {
+    await filledByMaria(request, "2027-07-12");
+    await signIn(page, "admin@sunrisehealth.example");
+
+    await page.getByRole("row", { name: /Jul 12, 2027/ }).getByTestId("shift-cancel-button").click();
+
+    const dialog = page.getByRole("dialog", { name: NURSE_TITLE });
+    await dialog.getByRole("radio", { name: "No-show" }).check();
+    await expect(dialog.getByRole("button", { name: "Cancel assignment" })).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Report no-show" }).click();
+
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId("notification-banner")).toHaveText(
+      /^No-show reported: Maria Lopez was unassigned from the RN shift on Jul 12, 2027\. The shift is open again\./,
+    );
+    const row = page.getByRole("row", { name: /Jul 12, 2027/ });
+    await expect(row).toContainText("Open");
+    await expect(row).toContainText("Unassigned");
+
+    await page.reload();
+    await expect(page.getByRole("row", { name: /Jul 12, 2027/ })).toContainText("Unassigned");
+  });
+
+  test("the dialog is locked while the cancel is pending", async ({ page, request }) => {
+    await filledByMaria(request, "2027-07-13");
+    await signIn(page, "admin@sunrisehealth.example");
+    await page.route("**/api/shifts/*/cancel", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+
+    await page.getByRole("row", { name: /Jul 13, 2027/ }).getByTestId("shift-cancel-button").click();
+    const dialog = page.getByRole("dialog", { name: NURSE_TITLE });
+    await dialog.getByRole("radio", { name: "No-show" }).check();
+    await dialog.getByRole("button", { name: "Report no-show" }).click();
+
+    await expect(dialog.getByRole("button", { name: "Reporting…" })).toBeDisabled();
+    await expect(dialog.getByRole("button", { name: "Go back" })).toBeDisabled();
+    await expect(dialog.getByRole("button", { name: "Close" })).toBeDisabled();
+    await expect(dialog.getByRole("radio", { name: "In advance" })).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeVisible();
+
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId("notification-banner")).toContainText("No-show reported");
+  });
+
+  test("a failed cancel keeps the dialog open with the server's message and refreshes the list", async ({
+    page,
+    request,
+  }) => {
+    const id = await filledByMaria(request, "2027-07-14");
+    await signIn(page, "admin@sunrisehealth.example");
+    await page.getByRole("row", { name: /Jul 14, 2027/ }).getByTestId("shift-cancel-button").click();
+    const dialog = page.getByRole("dialog", { name: NURSE_TITLE });
+
+    const maria = await tokenFor(request, "maria.lopez@example.com");
+    const taken = await request.post(`/api/shifts/${id}/cancel`, {
+      headers: { Authorization: `Bearer ${maria}` },
+      data: { reason: "advance" },
+    });
+    expect(taken.status()).toBe(200);
+
+    await dialog.getByRole("button", { name: "Cancel assignment" }).click();
+
+    const banner = dialog.getByTestId("notification-banner");
+    await expect(banner).toHaveText("Shift has no active assignment");
+    await expect(banner).toHaveAttribute("role", "alert");
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole("row", { name: /Jul 14, 2027/ })).toContainText("Unassigned");
+    await expect(dialog.getByRole("button", { name: "Cancel assignment" })).toBeEnabled();
   });
 });

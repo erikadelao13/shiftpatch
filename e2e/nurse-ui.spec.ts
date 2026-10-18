@@ -174,3 +174,93 @@ test.describe("the nurse marketplace", () => {
     await expect(available(page).getByText("Apr 2, 2027")).toHaveCount(0);
   });
 });
+
+async function claimedByMaria(request: APIRequestContext, date: string): Promise<string> {
+  const id = await postShift(request, date);
+  const token = await tokenFor(request, "maria.lopez@example.com");
+  const response = await request.post(`/api/shifts/${id}/claim`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(response.status()).toBe(200);
+  return id;
+}
+
+const myRow = (page: Page, date: string) =>
+  mine(page).getByRole("row").filter({ hasText: date });
+
+test.describe("cancelling an assignment", () => {
+  test("Maria cancels in advance, and the shift moves to Available shifts and stays there", async ({
+    page,
+    request,
+  }) => {
+    await claimedByMaria(request, "2027-07-01");
+    await signIn(page, "maria.lopez@example.com");
+
+    await myRow(page, "Jul 1, 2027").getByTestId("shift-cancel-button").click();
+
+    const dialog = page.getByRole("dialog", { name: "Cancel this assignment?" });
+    await expect(dialog).toContainText("Jul 1, 2027");
+    await expect(dialog.getByLabel("Cancellation reason")).toHaveValue("In advance");
+    await dialog.getByRole("button", { name: "Cancel assignment" }).click();
+
+    await expect(dialog).toBeHidden();
+    const banner = page.getByTestId("notification-banner");
+    await expect(banner).toContainText("Assignment cancelled: RN on Jul 1, 2027 with Sunrise Health Staffing.");
+    await expect(banner).toContainText("The shift is open again.");
+    await expect(mine(page).getByText("Jul 1, 2027")).toHaveCount(0);
+    await expect(available(page).getByText("Jul 1, 2027")).toBeVisible();
+
+    await page.reload();
+    await expect(mine(page).getByText("Jul 1, 2027")).toHaveCount(0);
+    await expect(available(page).getByText("Jul 1, 2027")).toBeVisible();
+  });
+
+  test("the dialog is locked while the cancel is pending", async ({ page, request }) => {
+    await claimedByMaria(request, "2027-07-02");
+    await signIn(page, "maria.lopez@example.com");
+    await page.route("**/api/shifts/*/cancel", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+
+    await myRow(page, "Jul 2, 2027").getByTestId("shift-cancel-button").click();
+    const dialog = page.getByRole("dialog", { name: "Cancel this assignment?" });
+    await dialog.getByRole("button", { name: "Cancel assignment" }).click();
+
+    await expect(dialog.getByRole("button", { name: "Cancelling…" })).toBeDisabled();
+    await expect(dialog.getByRole("button", { name: "Keep assignment" })).toBeDisabled();
+    await expect(dialog.getByRole("button", { name: "Close" })).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeVisible();
+
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId("notification-banner")).toContainText("Assignment cancelled");
+  });
+
+  test("a failed cancel keeps the dialog open with the server's message and refreshes the list", async ({
+    page,
+    request,
+  }) => {
+    const id = await claimedByMaria(request, "2027-07-03");
+    await signIn(page, "maria.lopez@example.com");
+    await expect(myRow(page, "Jul 3, 2027")).toBeVisible();
+
+    await myRow(page, "Jul 3, 2027").getByTestId("shift-cancel-button").click();
+    const dialog = page.getByRole("dialog", { name: "Cancel this assignment?" });
+    const agency = await tokenFor(request, "admin@sunrisehealth.example");
+    const taken = await request.post(`/api/shifts/${id}/cancel`, {
+      headers: { Authorization: `Bearer ${agency}` },
+      data: { reason: "advance" },
+    });
+    expect(taken.status()).toBe(200);
+
+    await dialog.getByRole("button", { name: "Cancel assignment" }).click();
+
+    const banner = dialog.getByTestId("notification-banner");
+    await expect(banner).toHaveText("Shift has no active assignment");
+    await expect(banner).toHaveAttribute("role", "alert");
+    await expect(dialog).toBeVisible();
+    await expect(mine(page).getByText("Jul 3, 2027")).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: "Cancel assignment" })).toBeEnabled();
+  });
+});
