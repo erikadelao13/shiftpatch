@@ -159,7 +159,7 @@ One shift has at most one active nurse assignment. Simultaneous claim attempts m
 
 - Maria's seeded credential expires on 2027-01-01; James's expired on 2026-06-01.
 - Eligibility uses the nurse's effective expiry when the claim is attempted.
-- Proposed boundary: a credential remains valid through its expiry date. Document this assumption and test the boundary.
+- A credential remains valid through its expiry date (owner decision, 2026-10-17). "Today" is the UTC calendar date. The boundary is tested the day before, on and after the expiry date.
 - No extra requirement for an uploaded file is imposed on the seeded nurses.
 - Dates and times are facility-local and use the technical spec's 24-hour format; no timezone conversion is required.
 - A shift may run overnight. Its planned duration includes the following day when its end time precedes its start.
@@ -305,7 +305,7 @@ Additions are considered only after the committed core is usable and verified. R
 ## 14. Product decisions to keep explicit
 
 1. Cancellation permissions follow the proposed role policy above.
-2. Credential expiry is inclusive of its date.
+2. Credential expiry is inclusive of its date, and "today" is the UTC calendar date.
 3. Uploaded expiry is self-reported in this demo.
 4. Historical seeded shifts remain available for the prescribed flows.
 5. Timesheets show assignment/submission state; claimed work is not automatically completed work.

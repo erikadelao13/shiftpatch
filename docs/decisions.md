@@ -75,6 +75,23 @@ The authentication flow supports neither, and registration and recovery are out 
 - Re-seeding resets `shift-1` to `shift-3` to their trial-start state and leaves every other shift alone.
 - TanStack Query is deferred. The agency board is a Server Component that refreshes with `router.refresh()` after a successful POST.
 
+### 2026-10-17: claiming and credential decisions
+
+Owner decisions, made while planning the claim:
+
+- **Credentials live in a `Credential` table**, seeded with the spec's expiries. The banner and the claim both read it. Upload has its own plan later.
+- **Audit starts with an `AuditEvent` table.** Only claims are audited, inside the claim transaction. Auditing posts and the admin view belong to the audit plan.
+- **"Today" for expiry is the UTC calendar date.** A credential stays valid through its expiry date.
+- **The nurse UI was committed first**, on a feature branch.
+
+Agent defaults, not yet reviewed by the owner:
+
+- **Check order:** role, then credential, then whether the shift exists, then whether it is available. James gets the credential `403` even for an unknown or filled shift.
+- **Messages:** "Only nurses can claim shifts" (`403`), "No credential on file, cannot claim shift" (`403`), "Shift not found" (`404`) and "Shift is no longer available" (`409`, which also covers the nurse's own claimed shift).
+- **Race safety** comes from a conditional `updateMany` under READ COMMITTED, with no serializable isolation or retries.
+- **Data shape:** one `Credential` row per nurse. Audit rows reference their resource by type and ID with no foreign key.
+- **Re-seeding** resets both nurses' expiry dates to the spec values.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.
