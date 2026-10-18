@@ -164,6 +164,7 @@ One shift has at most one active nurse assignment. Simultaneous claim attempts m
 - Dates and times are facility-local and use the technical spec's 24-hour format; no timezone conversion is required.
 - A shift may run overnight. Its planned duration includes the following day when its end time precedes its start.
 - Keep the historical seeded shifts usable for the specified assessment flows; do not introduce a blanket past-date rejection.
+- Either cancellation reason works on any filled shift, past or future (owner decision, 2026-10-17).
 - Additional matching by specialty, geographic distance, overlapping work, or verified license type is deferred.
 
 ### Cancellation permissions: proposed assumptions

@@ -92,6 +92,24 @@ Agent defaults, not yet reviewed by the owner:
 - **Data shape:** one `Credential` row per nurse. Audit rows reference their resource by type and ID with no foreign key.
 - **Re-seeding** resets both nurses' expiry dates to the spec values.
 
+### 2026-10-17: cancellation and no-show decisions
+
+Owner decisions, made while planning the cancellation:
+
+- **Agencies get both reasons**, through one "Cancel shift" button per filled row whose dialog asks for the reason ("In advance" preselected). This keeps exactly one `shift-cancel-button` per row.
+- **No timing rule.** Either reason works on any filled shift, past or future.
+- **History is stored, not shown.** The `Cancellation` row and the audit event are written now; the audit plan and the admin dashboard plan display them.
+
+Agent defaults, not yet reviewed by the owner:
+
+- **Check order and messages** are in ARCHITECTURE §6. A nurse's no-show is refused before any database read, and a nurse cancelling the same claim twice gets `409`, not `403`.
+- **Data shape:** a `Cancellation` table that cascades with its shift and restricts deleting its users; the database stores `no_show` and the presenter maps it to `"no-show"`; one audit action, `shift_cancelled`, with the reason in its metadata in the API spelling.
+- **The response carries only `{ reason, previousNurseId }`**, exactly as the spec shows.
+- **The previous nurse may claim the shift again**, including after a no-show. No rule in the packet forbids it.
+- **Re-seeding** deletes the seeded shifts' `Cancellation` rows and leaves audit rows alone.
+- **Race safety** comes from a conditional `updateMany` keyed on the previous nurse, under READ COMMITTED, as in the claim.
+- **A failed cancel refreshes the list** behind the dialog before showing the server's message.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.
