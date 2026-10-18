@@ -12,7 +12,7 @@ function eventCount(count: number): string {
   return `${count} ${count === 1 ? "event" : "events"}`;
 }
 
-export function AuditLog({ entries }: { entries: AuditEntry[] }) {
+export function AuditLog({ entries, total }: { entries: AuditEntry[]; total: number }) {
   const { refresh, refreshing } = useServerRefresh();
   const [announcement, setAnnouncement] = useState("");
   const refreshingRef = useRef(refreshing);
@@ -78,7 +78,7 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
             </h2>
             <p className="mt-1 text-text-muted">Successful actions, recorded as they happen.</p>
           </div>
-          <p className="text-sm text-text-muted">{eventCount(entries.length)}</p>
+          <p className="text-sm text-text-muted">{eventCount(total)}</p>
         </div>
 
         <div className="mx-5 border-t border-border sm:mx-6">
@@ -89,7 +89,11 @@ export function AuditLog({ entries }: { entries: AuditEntry[] }) {
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border py-4 text-sm text-text-muted">
-            <p>Showing {eventCount(entries.length)}</p>
+            <p>
+              {total > entries.length
+                ? `Showing ${entries.length} of ${total} events`
+                : `Showing ${eventCount(entries.length)}`}
+            </p>
             <p className="flex items-center gap-2">
               <ClockIcon />
               Times in UTC
