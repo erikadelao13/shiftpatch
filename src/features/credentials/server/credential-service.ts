@@ -1,12 +1,15 @@
 import "server-only";
 
-// The Credential table arrives with the credentials plan; until then the
-// spec's seeded expiries are the only credential data that exists.
-const SEEDED_EXPIRIES: Readonly<Record<string, string>> = {
-  "nurse-1": "2027-01-01",
-  "nurse-2": "2026-06-01",
-};
+import type { Prisma } from "@/generated/prisma/client";
+import { getPrisma } from "@/shared/server/db";
 
-export async function getCredentialExpiry(nurseId: string): Promise<string | null> {
-  return SEEDED_EXPIRIES[nurseId] ?? null;
+export async function getCredentialExpiry(
+  nurseId: string,
+  db: Prisma.TransactionClient = getPrisma(),
+): Promise<string | null> {
+  const credential = await db.credential.findUnique({
+    where: { nurseId },
+    select: { expiresOn: true },
+  });
+  return credential?.expiresOn.toISOString().slice(0, 10) ?? null;
 }

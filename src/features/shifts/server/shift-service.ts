@@ -3,13 +3,21 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { cache } from "react";
 
+import { recordAuditEvent } from "@/features/audit/server/audit-service";
 import type { Actor } from "@/features/auth/types";
+import { getCredentialStatus, todayIsoDate } from "@/features/credentials/status";
+import { getCredentialExpiry } from "@/features/credentials/server/credential-service";
 import { HttpError } from "@/shared/server/errors";
 import { getPrisma } from "@/shared/server/db";
 
 import type { NewShiftInput } from "../schemas";
 import type { AgencyShift, MarketplaceShift, NurseMarketplace, ShiftDTO } from "../types";
-import { canPostShift, canReadAgencyShifts } from "./shift-policy";
+import {
+  canClaimShift,
+  canPostShift,
+  canReadAgencyShifts,
+  credentialClaimError,
+} from "./shift-policy";
 import { toShiftDTO } from "./shift-presenter";
 
 const inScheduleOrder = [
@@ -65,6 +73,48 @@ export async function createShift(
     include: { agency: { select: { name: true } } },
   });
   return toShiftDTO(row);
+}
+
+export async function claimShift(
+  actor: Actor,
+  shiftId: string,
+  today: string = todayIsoDate(),
+): Promise<ShiftDTO> {
+  if (!canClaimShift(actor)) {
+    throw new HttpError(403, "Only nurses can claim shifts");
+  }
+  return getPrisma().$transaction(async (tx) => {
+    const status = getCredentialStatus(await getCredentialExpiry(actor.id, tx), today);
+    const credentialError = credentialClaimError(status);
+    if (credentialError) throw new HttpError(403, credentialError);
+
+    const { count } = await tx.shift.updateMany({
+      where: { id: shiftId, status: "open", claimedById: null },
+      data: { status: "filled", claimedById: actor.id },
+    });
+    if (count === 0) {
+      const existing = await tx.shift.findUnique({
+        where: { id: shiftId },
+        select: { id: true },
+      });
+      throw existing
+        ? new HttpError(409, "Shift is no longer available")
+        : new HttpError(404, "Shift not found");
+    }
+
+    const row = await tx.shift.findUniqueOrThrow({
+      where: { id: shiftId },
+      include: { agency: { select: { name: true } } },
+    });
+    await recordAuditEvent(tx, {
+      actorId: actor.id,
+      action: "shift_claimed",
+      resourceType: "shift",
+      resourceId: shiftId,
+      metadata: { agencyId: row.agencyId },
+    });
+    return toShiftDTO(row);
+  });
 }
 
 export async function getAgencyBoard(agencyId: string): Promise<AgencyShift[]> {

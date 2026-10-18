@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Actor } from "@/features/auth/types";
 
-import { canPostShift, canReadAgencyShifts } from "./shift-policy";
+import { canClaimShift, canPostShift, canReadAgencyShifts, credentialClaimError } from "./shift-policy";
 
 const agencyA: Actor = { id: "agency-a", name: "A", role: "agency", agencyId: "agency-a" };
 const nurse: Actor = { id: "nurse-1", name: "Maria", role: "nurse", agencyId: null };
@@ -32,5 +32,31 @@ describe("canReadAgencyShifts", () => {
   it("refuses a nurse and an agency without an id", () => {
     expect(canReadAgencyShifts(nurse, "agency-a")).toBe(false);
     expect(canReadAgencyShifts(orphanAgency, "agency-a")).toBe(false);
+  });
+});
+
+describe("canClaimShift", () => {
+  it("allows only a nurse", () => {
+    expect(canClaimShift(nurse)).toBe(true);
+    expect(canClaimShift(agencyA)).toBe(false);
+    expect(canClaimShift(admin)).toBe(false);
+  });
+});
+
+describe("credentialClaimError", () => {
+  it("allows a valid credential", () => {
+    expect(credentialClaimError({ state: "valid", expiresOn: "2027-01-01" })).toBeNull();
+  });
+
+  it("names an expired credential", () => {
+    expect(credentialClaimError({ state: "expired", expiresOn: "2026-06-01" })).toBe(
+      "Credential expired, cannot claim shift",
+    );
+  });
+
+  it("names a missing credential", () => {
+    expect(credentialClaimError({ state: "missing" })).toBe(
+      "No credential on file, cannot claim shift",
+    );
   });
 });
