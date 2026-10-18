@@ -1,6 +1,6 @@
 # Shift cancellation and no-show
 
-Status: Active
+Status: Complete
 Owner: Erika De LA O (decisions) / agent (implementation)
 Created: 2026-10-17
 
@@ -43,7 +43,7 @@ Acceptance:
 - [x] **UI states.**
   - While a cancel is pending, both dialog buttons and the close control are disabled, and Escape and backdrop clicks do nothing. This lasts until the refreshed list has rendered.
   - If the cancel fails, the dialog stays open, the server's message appears in a `role="alert"` `notification-banner` inside it, and the list behind it refreshes.
-- [ ] **Docs and checks.** The docs in step 7 are updated and `pnpm verify` passes. After the run, the dev branch holds only seeded rows: 3 `Shift` in their spec state, 2 `Credential`, 0 `AuditEvent` and 0 `Cancellation`.
+- [x] **Docs and checks.** The docs in step 7 are updated and `pnpm verify` passes. After the run, the dev branch holds only seeded rows: 3 `Shift` in their spec state, 2 `Credential`, 0 `AuditEvent` and 0 `Cancellation`.
 
 Non-goals:
 
@@ -298,10 +298,10 @@ Actual results, 2026-10-17:
 - `pnpm verify`: exit 0. `check:docs` passed, Vitest 13 files and 141 tests passed, Playwright 82 passed (lint, build and typecheck clean).
 - Dev branch counts after `pnpm verify`: `Shift` 4, `Credential` 2, `AuditEvent` 0, `Cancellation` 0, `Agency` 2, `User` 5.
 
-Outstanding: the last acceptance criterion needs 3 `Shift` rows, and the branch holds the fourth, unexplained one described under Discoveries. Every other criterion passed.
+After `pnpm verify`, the owner approved deleting the stray fourth shift. It was deleted by ID (no audit or cancellation rows were attached), and the dev branch then held `Shift` 3, `Credential` 2, `AuditEvent` 0 and `Cancellation` 0. Every acceptance criterion passed.
 
 ## Handoff or outcome
 
-Status stays Active until the owner decides what to do with `shift-0f568082-1f91-466a-9903-aafa905ef4fa`.
+Complete (2026-10-17). `POST /api/shifts/:id/cancel`, the `Cancellation` history with its `shift_cancelled` audit event, and both cancel dialogs are implemented, merged to `main`, and verified with `pnpm verify` (141 Vitest and 82 Playwright tests) plus a manual check.
 
-Next action: ask the owner whether that shift can be deleted (it has no audit or cancellation rows). Once the branch holds exactly the 3 seeded shifts, tick the "Docs and checks" criterion, set Status to Complete, move this file to `docs/exec-plans/completed/`, repair links to the old path, and run `pnpm check:docs`.
+Known gaps, by design: cancellation history is stored but not shown in any UI (the audit and admin dashboard plans display it), admin cancellation is reachable through the API only, and assignment history for timesheets (the immutable assignment ID) is not built.
