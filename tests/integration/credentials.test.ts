@@ -127,8 +127,8 @@ describe("saveCredential", () => {
 
     const audits = await auditRowsFor(saver);
     expect(audits.map((row) => row.metadata)).toEqual([
-      { previousExpiresOn: null, expiresOn: "2027-03-01" },
-      { previousExpiresOn: "2027-03-01", expiresOn: "2028-04-02" },
+      { nurseId: saver.id, previousExpiresOn: null, expiresOn: "2027-03-01" },
+      { nurseId: saver.id, previousExpiresOn: "2027-03-01", expiresOn: "2028-04-02" },
     ]);
     expect(JSON.stringify(audits)).not.toContain("scan.png");
   });

@@ -93,9 +93,21 @@ beforeAll(async () => {
   }
 
   await prisma.agency.create({ data: { id: agencyId, name: "Throwaway Agency" } });
+  await prisma.user.create({
+    data: {
+      id: throwawayAgency.id,
+      email: `${throwawayAgency.id}@example.test`,
+      name: throwawayAgency.name,
+      role: throwawayAgency.role,
+      agencyId,
+      passwordHash: "not-a-real-hash",
+    },
+  });
 });
 
 afterAll(async () => {
+  await prisma.auditEvent.deleteMany({ where: { actorId: throwawayAgency.id } });
+  await prisma.user.deleteMany({ where: { id: throwawayAgency.id } });
   await prisma.shift.deleteMany({ where: { agencyId } });
   await prisma.agency.deleteMany({ where: { id: agencyId } });
   await getDb().end();
@@ -162,6 +174,20 @@ describe("createShift", () => {
     expect(listed).toContainEqual(shift);
   });
 
+  it("records one shift_posted event with a snapshot of the post", async () => {
+    const shift = await createShift(throwawayAgency, { ...input, date: "2026-11-07" });
+
+    const events = await prisma.auditEvent.findMany({
+      where: { resourceType: "shift", resourceId: shift.id },
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      actorId: throwawayAgency.id,
+      action: "shift_posted",
+      metadata: { agencyId, role: "LPN", date: "2026-11-07" },
+    });
+  });
+
   it("accepts a past date", async () => {
     const shift = await createShift(throwawayAgency, { ...input, date: "2020-01-01" });
     expect(shift.date).toBe("2020-01-01");
@@ -174,6 +200,11 @@ describe("createShift", () => {
       "Only agency accounts can post shifts",
     );
     await expectHttpError(createShift(admin, input), 403);
+    expect(
+      await prisma.auditEvent.count({
+        where: { actorId: { in: [nurse.id, admin.id] }, action: "shift_posted" },
+      }),
+    ).toBe(0);
   });
 
   it("shows the new shift on the agency board with no nurse", async () => {

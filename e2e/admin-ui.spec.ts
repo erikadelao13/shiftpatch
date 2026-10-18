@@ -69,6 +69,89 @@ async function expectTotalsAgree(page: Page) {
   );
 }
 
+test.describe("the admin audit log", () => {
+  test("opens from the sidebar and lists a post, a claim and a no-show", async ({ page, request }) => {
+    const agencyA = accounts[0].email;
+    const agencyToken = await tokenFor(request, agencyA);
+    const created = await request.post("/api/shifts", {
+      headers: { Authorization: `Bearer ${agencyToken}` },
+      data: { role: "LPN", date: "2027-04-05", startTime: "07:00", endTime: "19:00" },
+    });
+    expect(created.status()).toBe(201);
+    const { id: shiftId } = await created.json();
+    shiftIds.push(shiftId);
+    const claimed = await request.post(`/api/shifts/${shiftId}/claim`, {
+      headers: { Authorization: `Bearer ${await tokenFor(request, maria)}` },
+    });
+    expect(claimed.status()).toBe(200);
+    const noShow = await request.post(`/api/shifts/${shiftId}/cancel`, {
+      headers: { Authorization: `Bearer ${agencyToken}` },
+      data: { reason: "no-show" },
+    });
+    expect(noShow.status()).toBe(200);
+
+    await signInAsAdmin(page);
+    await page
+      .getByRole("navigation", { name: "Administration" })
+      .getByRole("link", { name: "Audit log" })
+      .click();
+
+    await expect(page).toHaveURL(/\/admin\/audit$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "A clear record of every change." }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Audit log" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "Shift overview" })).not.toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    await expect(page.getByTestId("audit-log-table")).toHaveCount(1);
+    await expect(page.getByText(/^Showing (\d+ of )?\d+ events?$/)).toBeVisible();
+
+    const rows = page.getByTestId("audit-log-table").locator("tbody tr").filter({ hasText: shiftId });
+    await expect(rows).toHaveCount(3);
+    await expect(rows.filter({ hasText: "Shift posted" })).toHaveCount(1);
+    await expect(rows.filter({ hasText: "Shift claimed" })).toHaveCount(1);
+    const reported = rows.filter({ hasText: "No-show reported" });
+    await expect(reported).toHaveCount(1);
+    await expect(reported).toContainText("Maria Lopez unassigned");
+    await expect(reported).toContainText("Sunrise Health Staffing");
+  });
+
+  test("sends a nurse who opens it back to the nurse workspace", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByTestId("login-email-input").fill(maria);
+    await page.getByTestId("login-password-input").fill(PASSWORD);
+    await page.getByTestId("login-submit-button").click();
+    await expect(page).toHaveURL(/\/nurse$/);
+
+    const session = (await page.context().cookies()).find(
+      (cookie) => cookie.name === "shiftpatch_session",
+    );
+    const sid = session ? sessionIdOf(session.value) : undefined;
+    if (sid) sessionIds.push(sid);
+
+    await page.goto("/admin/audit");
+    await expect(page).toHaveURL(/\/nurse$/);
+    await expect(page.getByTestId("audit-log-table")).toHaveCount(0);
+  });
+
+  test("stacks into cards at 375px with no page-wide horizontal scroll", async ({ page, request }) => {
+    await postShift(request, "2027-04-06");
+    await page.setViewportSize({ width: 375, height: 800 });
+    await signInAsAdmin(page);
+    await page.goto("/admin/audit");
+
+    await expect(page.getByTestId("audit-log-table")).toBeVisible();
+    await expect(page.getByTestId("audit-log-table").locator("thead")).toBeHidden();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
+
 test.describe("the admin shift overview", () => {
   test("lists the seeded shifts with agency, nurse and one status badge each", async ({ page }) => {
     await signInAsAdmin(page);
@@ -144,7 +227,8 @@ test.describe("the admin shift overview", () => {
     }
   });
 
-  test("stacks into cards at 375px with no page-wide horizontal scroll", async ({ page }) => {
+  test("stacks into cards at 375px with no page-wide horizontal scroll", async ({ page, request }) => {
+    await postShift(request, "2027-04-06");
     await page.setViewportSize({ width: 375, height: 800 });
     await signInAsAdmin(page);
 
