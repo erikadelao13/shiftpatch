@@ -69,11 +69,11 @@ Non-goals: hours entry, submission, approval, payroll; an admin agency filter; p
 
 ## Steps and progress
 
-- [ ] **0. Branch and baseline.**
+- [x] **0. Branch and baseline.**
   - Run `git switch -c feat/timesheets`.
   - Commit the existing UI and doc work by context (the `contextual-commits` skill) before any change.
   - Run `pnpm db:seed` if needed, and confirm the dev row counts in acceptance 6.
-- [ ] **1. Types and presenter.**
+- [x] **1. Types and presenter.**
   - Create `src/features/timesheets/types.ts`, with no `server-only` so client components can import it. It defines:
     - `TimesheetEntryState = "assigned" | "cancelled" | "no-show"`
     - `TimesheetEntry = { id, shiftId, role, agencyName, date, startTime, endTime, nurseName, state }`. `id` is the shift ID for an assigned row and the cancellation ID for a history row; shift IDs start with `shift-`, so the two cannot collide.
@@ -84,7 +84,7 @@ Non-goals: hours entry, submission, approval, payroll; an admin agency filter; p
     - Dates use `toISOString().slice(0, 10)`.
     - A filled shift with no nurse throws, so the page fails visibly through `error.tsx`.
   - **Order:** date, start time, the shift's `createdAt`, `shiftId`; then history rows before the assigned row, ordered by the cancellation's `createdAt`. A current claim always comes after every cancellation of its shift.
-- [ ] **2. Service.**
+- [x] **2. Service.**
   - Create `server/timesheet-service.ts` (`server-only`):
     - `listTimesheetEntries(scope: { kind: "nurse"; nurseId } | { kind: "agency"; agencyId } | { kind: "all" })`
     - It runs two `findMany` calls in `Promise.all`:
@@ -96,10 +96,10 @@ Non-goals: hours entry, submission, approval, payroll; an admin agency filter; p
     - agency: `agencyId` / `shift.agencyId`
     - all: none
   - The service takes a scope, not an actor, like `getAgencyBoard` and `getAdminBoard`. Each page builds the scope from the user `requireRole` returns.
-- [ ] **3. Totals.**
+- [x] **3. Totals.**
   - In `hours.ts`, retype `ScheduledShift` against `TimesheetEntry`.
   - Add `timesheetTotals(entries) → { assigned, history, scheduledHours }`, counting only `assigned` rows toward `assigned` and `scheduledHours`.
-- [ ] **4. Components.**
+- [x] **4. Components.**
   - **`Timesheet({ audience: Role, entries })`**
     - All copy comes from a `COPY` record keyed by audience. The nurse copy stays as it is. Proposed agency copy: "Every assignment, accounted for." / "Review scheduled time for your agency's shifts." / "No nurse has claimed one of your shifts yet." Proposed admin copy: "Hours across every agency." / "Review assignments and scheduled time for both agencies." / "No shifts have been claimed yet." Neither empty state has a link.
     - The empty state shows only when there are no entries at all.
@@ -113,14 +113,14 @@ Non-goals: hours entry, submission, approval, payroll; an admin agency filter; p
     - Write both breakpoint class sets as literal strings in one map. Tailwind v4 cannot see interpolated class names.
     - Add an `EntryStatePill`: Assigned uses `success-*`, Cancelled `neutral-*`, No-show `danger-*`.
     - History rows show the duration muted and not bold, with "Not counted" under it.
-- [ ] **5. Pages and layouts.**
+- [x] **5. Pages and layouts.**
   - `nurse/timesheets/page.tsx`: use the `{ kind: "nurse", nurseId: user.id }` scope.
   - New `admin/timesheets/{page,error}.tsx`, copying the audit page. The error reads "We couldn't load the timesheets."
   - New `agency/timesheets/{page,error}.tsx`. When the user has no `agencyId`, render "This account has no agency.", as `agency/page.tsx` does.
   - `admin/layout.tsx`: add the Timesheets item with `NoteIcon`.
   - `agency/layout.tsx`: replace the hand-written `<nav>` with `SidebarNav label="Agency"`, listing Overview (`HomeIcon`) and Timesheets (`NoteIcon`), and drop the `Link` import.
   - Restart any reused `pnpm dev` after adding the route folders.
-- [ ] **6. Tests.**
+- [x] **6. Tests.**
   - **Unit** `server/timesheet-presenter.test.ts`, plus additions to `hours.test.ts`:
     - field mapping and the date conversion, building dates with `new Date("2026-10-03")`, never with local constructors
     - `advance` maps to "cancelled" and `no_show` to "no-show"
@@ -147,7 +147,7 @@ Non-goals: hours entry, submission, approval, payroll; an admin agency filter; p
       4. **Redirects.** Maria is redirected away from `/admin/timesheets` and from `/agency/timesheets`.
       5. **Admin layout.** At 375px there is no page-wide horizontal scroll. At 1280px the header row shows and the table is not wider than its panel, which catches clipping.
     - Update the existing "Recorded work hours" assertion. `deleteOwnRows` needs no change.
-- [ ] **7. Docs.**
+- [x] **7. Docs.**
   - **ARCHITECTURE:**
     - the status line
     - the §3 tree: remove `api/timesheets/route.ts`, add the three page folders and the timesheet `types.ts` and `server/*`, and reword the `shift-presenter` "only place that maps `no_show`" claim to "the API spelling"
@@ -164,7 +164,7 @@ Non-goals: hours entry, submission, approval, payroll; an admin agency filter; p
   - **Tech-debt tracker:** reword TD-1, and add an entry for the unpaged, unbounded admin and agency list.
   - **`docs/decisions.md`:** add "### 2026-10-18: timesheet decisions" with the four owner decisions and the agent defaults below.
   - Run `pnpm check:docs`.
-- [ ] **8. Verify and hand off.**
+- [ ] **8. Verify and hand off.** (`pnpm verify` passed; the manual look and the row-count check are open, see Verification.)
   - Run `pnpm verify`. Look at all three pages by hand at 375, 768, 1024 and 1280px, using only the keyboard.
   - Re-check the dev row counts.
   - Record the actual output here, then move this plan to `completed/`.
@@ -198,8 +198,11 @@ Traps to keep in mind:
 
 ## Verification
 
-Not run yet.
+- `pnpm verify` passed on 2026-10-18: `check:docs`, `lint`, `build`, `typecheck`, `test` and `test:e2e` (110 e2e tests, including the 8 in `e2e/timesheets-ui.spec.ts`).
+- `tests/integration/timesheets.test.ts`: 6 passed. Unit: `timesheet-presenter.test.ts` and `hours.test.ts`, 13 passed.
+- **Acceptance 6 is not met.** After the run the dev branch holds 5 `Shift`, 2 `Credential`, 0 `CredentialDocument`, 6 `AuditEvent` and 2 `Cancellation` rows. The extra rows are two agency-a shifts dated 2026-10-23 (`shift-a3ea67d5-…`, `shift-5501b272-…`), their audit events and two cancellations by `nurse-1`. They were created minutes apart, not by an automated spec, so they look like manual use and were left in place. Deleting them needs the owner's go-ahead.
+- Not done: the by-hand look at the three pages at 375, 768, 1024 and 1280px with the keyboard only.
 
 ## Handoff or outcome
 
-Next action: step 0. Create `feat/timesheets` and commit the existing timesheet UI and doc work by context before any change.
+Next action: the owner decides whether to delete the leftover 2026-10-23 rows. Then recheck the row counts, do the manual look, and move this plan to `completed/`.

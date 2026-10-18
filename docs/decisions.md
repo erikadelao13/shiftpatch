@@ -172,6 +172,24 @@ Agent defaults, not yet reviewed by the owner:
 - **Metadata is parsed strictly.** A malformed row fails the page instead of being dropped, because hiding history is worse than a visible error.
 - **Only successful business events are audited.** There are no login or failed-attempt events, no backfill for seeded shifts and no seeded audit rows, so the dev page shows its empty state until someone acts.
 
+### 2026-10-18: timesheet decisions
+
+Owner decisions, answered while planning:
+
+- **Build the agency (own agency) and admin (all) views**, reusing the nurse table with a Nurse column.
+- **Cancelled and no-show assignments are history rows** taken from `Cancellation`, excluded from the totals, with no migration.
+- **No `Timesheet` table and no `GET /api/timesheets`.** Hours entry and submission are out of scope, so every row would hold no hours; the page alone is authorized by `requireRole`, as the audit log is.
+- **Replace the "Recorded work hours" card** with a "Cancelled or no-show" count, recorded in DESIGN as a deviation from the mockup.
+
+Agent defaults, not yet reviewed by the owner:
+
+- **One `listTimesheetEntries(scope)`** rather than one function per role. Pages authorize and build the scope.
+- **Ordering:** date, start time, the shift's `createdAt`, shift ID, then history before the current assignment. Entries are keyed by shift ID or cancellation ID.
+- **Pill colors:** neutral for Cancelled and danger for No-show.
+- **Agency and admin copy** as written in DESIGN §7.
+- **The admin page refreshes on tab return**, as the overview and audit log do; nurse and agency pages do not.
+- **No admin agency filter.** The admin table stacks below `xl`.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.
