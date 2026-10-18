@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { newShiftSchema, toFieldErrors } from "./schemas";
+import { cancelShiftSchema, newShiftSchema, toFieldErrors } from "./schemas";
 
 const valid = {
   role: "RN",
@@ -53,5 +53,26 @@ describe("newShiftSchema", () => {
 
   it("strips an agencyId from the body", () => {
     expect(newShiftSchema.parse({ ...valid, agencyId: "agency-b" })).toEqual(valid);
+  });
+});
+
+describe("cancelShiftSchema", () => {
+  it.each(["advance", "no-show"])("accepts the reason %j", (reason) => {
+    expect(cancelShiftSchema.parse({ reason })).toEqual({ reason });
+  });
+
+  it.each([{}, { reason: "" }, { reason: "no_show" }, { reason: "late" }, { reason: 1 }, { reason: null }])(
+    "rejects %j with the reason message",
+    (body) => {
+      const result = cancelShiftSchema.safeParse(body);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0].message).toBe('Reason must be "advance" or "no-show".');
+    },
+  );
+
+  it("strips a previousNurseId and a claimedBy from the body", () => {
+    expect(
+      cancelShiftSchema.parse({ reason: "advance", previousNurseId: "nurse-9", claimedBy: "nurse-9" }),
+    ).toEqual({ reason: "advance" });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { toShiftDTO, type ShiftRow } from "./shift-presenter";
+import { toCancelledShiftDTO, toDbCancellationReason, toShiftDTO, type ShiftRow } from "./shift-presenter";
 
 const row: ShiftRow = {
   id: "shift-1",
@@ -54,5 +54,33 @@ describe("toShiftDTO", () => {
   it("keeps the calendar day of a date-only value at UTC midnight", () => {
     const first = toShiftDTO({ ...row, date: new Date("2026-01-01T00:00:00.000Z") });
     expect(first.date).toBe("2026-01-01");
+  });
+});
+
+describe("toCancelledShiftDTO", () => {
+  const cancelled = toCancelledShiftDTO(
+    { ...row, createdAt: new Date() } as ShiftRow,
+    { reason: "no_show", previousNurseId: "nurse-1" },
+  );
+
+  it("returns the nine shift keys plus cancellation, ten in all", () => {
+    expect(Object.keys(cancelled)).toHaveLength(10);
+    expect(Object.keys(cancelled.cancellation).sort()).toEqual(["previousNurseId", "reason"]);
+  });
+
+  it("reports an open, unassigned shift and the previous nurse", () => {
+    expect(cancelled).toMatchObject({
+      status: "open",
+      claimedBy: null,
+      cancellation: { reason: "no-show", previousNurseId: "nurse-1" },
+    });
+  });
+
+  it("maps the database spelling to the API spelling and back", () => {
+    expect(
+      toCancelledShiftDTO(row, { reason: "advance", previousNurseId: "n" }).cancellation.reason,
+    ).toBe("advance");
+    expect(toDbCancellationReason("no-show")).toBe("no_show");
+    expect(toDbCancellationReason("advance")).toBe("advance");
   });
 });

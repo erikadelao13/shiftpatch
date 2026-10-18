@@ -3,6 +3,8 @@ import "server-only";
 import type { Actor } from "@/features/auth/types";
 import type { CredentialStatus } from "@/features/credentials/status";
 
+import type { ShiftStatus } from "../types";
+
 export function canPostShift(actor: Actor): boolean {
   return actor.role === "agency" && actor.agencyId !== null;
 }
@@ -25,4 +27,27 @@ export function credentialClaimError(status: CredentialStatus): string | null {
     case "missing":
       return "No credential on file, cannot claim shift";
   }
+}
+
+export function canRecordNoShow(actor: Actor): boolean {
+  if (actor.role === "admin") return true;
+  return actor.role === "agency" && actor.agencyId !== null;
+}
+
+export type CancellationRefusal = { status: 403 | 409; message: string };
+
+export function cancellationRefusal(
+  actor: Actor,
+  shift: { agencyId: string; status: ShiftStatus; claimedById: string | null },
+): CancellationRefusal | null {
+  if (actor.role === "agency" && actor.agencyId !== shift.agencyId) {
+    return { status: 403, message: "You can only cancel your own agency's shifts" };
+  }
+  if (shift.status === "open") {
+    return { status: 409, message: "Shift has no active assignment" };
+  }
+  if (actor.role === "nurse" && shift.claimedById !== actor.id) {
+    return { status: 403, message: "You can only cancel your own shifts" };
+  }
+  return null;
 }

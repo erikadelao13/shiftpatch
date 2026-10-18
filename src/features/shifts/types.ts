@@ -4,6 +4,10 @@ export type ShiftRole = (typeof SHIFT_ROLES)[number];
 
 export type ShiftStatus = "open" | "filled";
 
+export const CANCELLATION_REASONS = ["advance", "no-show"] as const;
+
+export type CancellationReason = (typeof CANCELLATION_REASONS)[number];
+
 export type ShiftDTO = {
   id: string;
   agencyId: string;
@@ -14,6 +18,10 @@ export type ShiftDTO = {
   endTime: string;
   status: ShiftStatus;
   claimedBy: string | null;
+};
+
+export type CancelledShiftDTO = ShiftDTO & {
+  cancellation: { reason: CancellationReason; previousNurseId: string };
 };
 
 export type AgencyShift = Pick<

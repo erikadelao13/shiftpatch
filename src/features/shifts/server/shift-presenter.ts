@@ -1,6 +1,8 @@
 import "server-only";
 
-import type { ShiftDTO, ShiftRole, ShiftStatus } from "../types";
+import type { CancellationReason as DbCancellationReason } from "@/generated/prisma/client";
+
+import type { CancellationReason, CancelledShiftDTO, ShiftDTO, ShiftRole, ShiftStatus } from "../types";
 
 export type ShiftRow = {
   id: string;
@@ -25,5 +27,27 @@ export function toShiftDTO(row: ShiftRow): ShiftDTO {
     endTime: row.endTime,
     status: row.status,
     claimedBy: row.claimedById,
+  };
+}
+
+const reasonToApi: Record<DbCancellationReason, CancellationReason> = {
+  advance: "advance",
+  no_show: "no-show",
+};
+
+export function toDbCancellationReason(reason: CancellationReason): DbCancellationReason {
+  return reason === "no-show" ? "no_show" : "advance";
+}
+
+export function toCancelledShiftDTO(
+  row: ShiftRow,
+  cancellation: { reason: DbCancellationReason; previousNurseId: string },
+): CancelledShiftDTO {
+  return {
+    ...toShiftDTO(row),
+    cancellation: {
+      reason: reasonToApi[cancellation.reason],
+      previousNurseId: cancellation.previousNurseId,
+    },
   };
 }

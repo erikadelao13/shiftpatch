@@ -1,6 +1,6 @@
 import { z, type ZodError } from "zod";
 
-import { SHIFT_ROLES } from "./types";
+import { CANCELLATION_REASONS, SHIFT_ROLES } from "./types";
 
 const TIME_PATTERN = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
 
@@ -27,6 +27,10 @@ export const newShiftSchema = z
       });
     }
   });
+
+export const cancelShiftSchema = z.object({
+  reason: z.enum(CANCELLATION_REASONS, 'Reason must be "advance" or "no-show".'),
+});
 
 export type NewShiftInput = z.infer<typeof newShiftSchema>;
 

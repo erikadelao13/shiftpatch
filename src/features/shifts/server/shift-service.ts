@@ -11,14 +11,23 @@ import { HttpError } from "@/shared/server/errors";
 import { getPrisma } from "@/shared/server/db";
 
 import type { NewShiftInput } from "../schemas";
-import type { AgencyShift, MarketplaceShift, NurseMarketplace, ShiftDTO } from "../types";
+import type {
+  AgencyShift,
+  CancellationReason,
+  CancelledShiftDTO,
+  MarketplaceShift,
+  NurseMarketplace,
+  ShiftDTO,
+} from "../types";
 import {
   canClaimShift,
   canPostShift,
   canReadAgencyShifts,
+  canRecordNoShow,
+  cancellationRefusal,
   credentialClaimError,
 } from "./shift-policy";
-import { toShiftDTO } from "./shift-presenter";
+import { toCancelledShiftDTO, toDbCancellationReason, toShiftDTO } from "./shift-presenter";
 
 const inScheduleOrder = [
   { date: "asc" },
@@ -114,6 +123,50 @@ export async function claimShift(
       metadata: { agencyId: row.agencyId },
     });
     return toShiftDTO(row);
+  });
+}
+
+export async function cancelShift(
+  actor: Actor,
+  shiftId: string,
+  reason: CancellationReason,
+): Promise<CancelledShiftDTO> {
+  if (reason === "no-show" && !canRecordNoShow(actor)) {
+    throw new HttpError(403, "Only agencies and admins can record a no-show");
+  }
+  const dbReason = toDbCancellationReason(reason);
+  return getPrisma().$transaction(async (tx) => {
+    const shift = await tx.shift.findUnique({
+      where: { id: shiftId },
+      select: { agencyId: true, status: true, claimedById: true },
+    });
+    if (!shift) throw new HttpError(404, "Shift not found");
+    const refusal = cancellationRefusal(actor, shift);
+    if (refusal) throw new HttpError(refusal.status, refusal.message);
+    const previousNurseId = shift.claimedById;
+    if (previousNurseId === null) throw new HttpError(409, "Shift has no active assignment");
+
+    const { count } = await tx.shift.updateMany({
+      where: { id: shiftId, status: "filled", claimedById: previousNurseId },
+      data: { status: "open", claimedById: null },
+    });
+    if (count === 0) throw new HttpError(409, "Shift has no active assignment");
+
+    await tx.cancellation.create({
+      data: { shiftId, reason: dbReason, previousNurseId, actorId: actor.id },
+    });
+    const row = await tx.shift.findUniqueOrThrow({
+      where: { id: shiftId },
+      include: { agency: { select: { name: true } } },
+    });
+    await recordAuditEvent(tx, {
+      actorId: actor.id,
+      action: "shift_cancelled",
+      resourceType: "shift",
+      resourceId: shiftId,
+      metadata: { agencyId: row.agencyId, reason, previousNurseId },
+    });
+    return toCancelledShiftDTO(row, { reason: dbReason, previousNurseId });
   });
 }
 
