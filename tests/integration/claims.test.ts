@@ -2,11 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { fixtureCredentials, fixtureShifts } from "../../prisma/fixtures";
 import type { Actor } from "@/features/auth/types";
 import { claimShift, createShift } from "@/features/shifts/server/shift-service";
 import { getDb, getPrisma } from "@/shared/server/db";
 import { HttpError } from "@/shared/server/errors";
+
+import { assertSeededState, expectHttpError } from "./support";
 
 // Runs on the Neon dev branch and needs `pnpm db:seed`. Every claim here is
 // on a throwaway shift; the seeded shifts are only read.
@@ -46,16 +47,6 @@ const credentialDates = new Map([
 const throwawayUsers = [throwawayAgency, validNurse, expiredNurse, boundaryNurse, missingNurse, racerOne, racerTwo];
 const createdShiftIds: string[] = [];
 
-async function expectHttpError(promise: Promise<unknown>, status: number, message?: string) {
-  const error = await promise.then(
-    () => null,
-    (caught: unknown) => caught,
-  );
-  expect(error).toBeInstanceOf(HttpError);
-  expect((error as HttpError).status).toBe(status);
-  if (message) expect((error as HttpError).message).toBe(message);
-}
-
 async function openShift(): Promise<string> {
   const shift = await createShift(throwawayAgency, {
     role: "RN",
@@ -71,26 +62,7 @@ const auditRowsFor = (resourceId: string) =>
   prisma.auditEvent.findMany({ where: { resourceType: "shift", resourceId } });
 
 beforeAll(async () => {
-  const [shifts, credentials] = await Promise.all([
-    prisma.shift.findMany({ where: { id: { in: fixtureShifts.map((shift) => shift.id) } } }),
-    prisma.credential.findMany({ where: { nurseId: { in: fixtureCredentials.map((c) => c.nurseId) } } }),
-  ]);
-  const shiftsMatch =
-    shifts.length === fixtureShifts.length &&
-    shifts.every((row) => {
-      const spec = fixtureShifts.find((shift) => shift.id === row.id);
-      return spec?.status === row.status && spec.claimedById === row.claimedById;
-    });
-  const credentialsMatch =
-    credentials.length === fixtureCredentials.length &&
-    credentials.every(
-      (row) =>
-        fixtureCredentials.find((c) => c.nurseId === row.nurseId)?.expiresOn ===
-        row.expiresOn.toISOString().slice(0, 10),
-    );
-  if (!shiftsMatch || !credentialsMatch) {
-    throw new Error("The seeded shifts or credentials are missing or changed. Run `pnpm db:seed` first.");
-  }
+  await assertSeededState();
 
   await prisma.agency.create({ data: { id: agencyId, name: "Throwaway Agency" } });
   await prisma.user.createMany({

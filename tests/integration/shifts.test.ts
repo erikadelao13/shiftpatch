@@ -11,7 +11,8 @@ import {
   listShifts,
 } from "@/features/shifts/server/shift-service";
 import { getDb, getPrisma } from "@/shared/server/db";
-import { HttpError } from "@/shared/server/errors";
+
+import { expectHttpError } from "./support";
 
 // Runs on the Neon dev branch and needs `pnpm db:seed`. Creates a throwaway
 // agency and deletes only its own rows; the fixture agencies stay clean.
@@ -65,16 +66,6 @@ const specShifts = {
     claimedBy: null,
   },
 } as const;
-
-async function expectHttpError(promise: Promise<unknown>, status: number, message?: string) {
-  const error = await promise.then(
-    () => null,
-    (caught: unknown) => caught,
-  );
-  expect(error).toBeInstanceOf(HttpError);
-  expect((error as HttpError).status).toBe(status);
-  if (message) expect((error as HttpError).message).toBe(message);
-}
 
 beforeAll(async () => {
   const seeded = await prisma.shift.findMany({
