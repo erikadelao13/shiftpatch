@@ -10,13 +10,13 @@ An authorized user reopens a filled shift by cancelling it in advance or by reco
 
 Acceptance:
 
-- [ ] **Baseline committed.** The cancellation UI that is uncommitted on `main` is committed on `feat/shift-cancellation`, in its own commits, before any backend work starts. The owner first confirms that this UI work is finished, because those files were still changing while this plan was written.
-- [ ] **Contract.** `POST /api/shifts/:id/cancel` with `{ "reason": "no-show" | "advance" }` returns `200` with exactly ten keys: the nine ShiftDTO keys with `status: "open"` and `claimedBy: null`, plus `cancellation: { reason, previousNurseId }`, which has exactly those two keys. The reopened shift shows up as open in `GET /api/shifts`, on the agency board and in the nurse marketplace, and any nurse with a valid credential can claim it again.
-- [ ] **Permissions** (PRODUCT §7, ARCHITECTURE §7):
+- [x] **Baseline committed.** The cancellation UI that is uncommitted on `main` is committed on `feat/shift-cancellation`, in its own commits, before any backend work starts. The owner first confirms that this UI work is finished, because those files were still changing while this plan was written.
+- [x] **Contract.** `POST /api/shifts/:id/cancel` with `{ "reason": "no-show" | "advance" }` returns `200` with exactly ten keys: the nine ShiftDTO keys with `status: "open"` and `claimedBy: null`, plus `cancellation: { reason, previousNurseId }`, which has exactly those two keys. The reopened shift shows up as open in `GET /api/shifts`, on the agency board and in the nurse marketplace, and any nurse with a valid credential can claim it again.
+- [x] **Permissions** (PRODUCT §7, ARCHITECTURE §7):
   - A nurse can cancel her own claim, in advance only.
   - An agency can cancel or record a no-show on a filled shift that belongs to it.
   - The admin can do both on any filled shift.
-- [ ] **Errors.** Each one is `{ error }` with `Cache-Control: no-store`, and the checks run in this order:
+- [x] **Errors.** Each one is `{ error }` with `Cache-Control: no-store`, and the checks run in this order:
   1. `401` without authentication.
   2. `400` for malformed JSON, or a missing or unknown `reason`.
   3. `403` "Only agencies and admins can record a no-show".
@@ -26,21 +26,21 @@ Acceptance:
   7. `403` "You can only cancel your own shifts", for a nurse on another nurse's claim.
 
   A rejected request changes nothing and writes no `Cancellation` or audit row.
-- [ ] **History.** Each successful cancel writes, in the same transaction as the reopening:
+- [x] **History.** Each successful cancel writes, in the same transaction as the reopening:
   - one `Cancellation` row: shift, reason, previous nurse, actor and time;
   - one `shift_cancelled` `AuditEvent` with `{ agencyId, reason, previousNurseId }`.
 
   When a reopened shift is claimed and cancelled again, it keeps both `Cancellation` rows.
-- [ ] **Race.** Two concurrent cancels of the same filled shift give exactly one `200` and one `409`, one `Cancellation` row and one `shift_cancelled` event. This is proven against the dev database, never with mocks.
-- [ ] **No timing rule.** Either reason works on any filled shift, past or future (owner decision).
-- [ ] **Nurse UI.** Maria's My shifts row has "Cancel shift" (`shift-cancel-button`). The dialog shows the reason fixed to "In advance".
+- [x] **Race.** Two concurrent cancels of the same filled shift give exactly one `200` and one `409`, one `Cancellation` row and one `shift_cancelled` event. This is proven against the dev database, never with mocks.
+- [x] **No timing rule.** Either reason works on any filled shift, past or future (owner decision).
+- [x] **Nurse UI.** Maria's My shifts row has "Cancel shift" (`shift-cancel-button`). The dialog shows the reason fixed to "In advance".
   - Confirming closes the dialog, and `notification-banner` reads "Assignment cancelled: … The shift is open again."
   - The shift leaves My shifts, appears in Available shifts, and stays there after a reload.
-- [ ] **Agency UI.** Each filled row has exactly one "Cancel shift" button (`shift-cancel-button`); open rows have none. The dialog names the assigned nurse and asks for a reason, "In advance" (preselected) or "No-show".
+- [x] **Agency UI.** Each filled row has exactly one "Cancel shift" button (`shift-cancel-button`); open rows have none. The dialog names the assigned nurse and asks for a reason, "In advance" (preselected) or "No-show".
   - The confirm label follows the chosen reason ("Cancel assignment" or "Report no-show").
   - The banner reads "Assignment cancelled: …" or "No-show reported: …".
   - The row turns Open and Unassigned, and stays that way after a reload.
-- [ ] **UI states.**
+- [x] **UI states.**
   - While a cancel is pending, both dialog buttons and the close control are disabled, and Escape and backdrop clicks do nothing. This lasts until the refreshed list has rendered.
   - If the cancel fails, the dialog stays open, the server's message appears in a `role="alert"` `notification-banner` inside it, and the list behind it refreshes.
 - [ ] **Docs and checks.** The docs in step 7 are updated and `pnpm verify` passes. After the run, the dev branch holds only seeded rows: 3 `Shift` in their spec state, 2 `Credential`, 0 `AuditEvent` and 0 `Cancellation`.
@@ -189,22 +189,22 @@ Add the back-relations to `Shift` and `User`.
 
 ## Steps and progress
 
-- [ ] **0. Baseline and branch.**
+- [x] **0. Baseline and branch.**
   - Ask the owner whether the uncommitted cancellation UI is finished. Don't commit work that is still in progress.
   - `git switch -c feat/shift-cancellation`.
   - On the uncommitted UI as it stands, run `pnpm lint`, `pnpm build`, `pnpm typecheck`, then `pnpm exec playwright test e2e/nurse-ui.spec.ts e2e/agency-ui.spec.ts`. Record the results, and fix only what blocks.
   - Commit it by context with the `contextual-commits` skill: the shared icon and refresh hook; the dialog and its wiring; the DESIGN note.
   - Confirm the key names in `.env.development`. Print the names only, never the values.
-- [ ] **1. Schema, migration, seed.**
+- [x] **1. Schema, migration, seed.**
   - Add the models and run `prisma migrate dev --create-only --name cancellations`. Read the SQL, then apply it with `pnpm db:migrate` (dev branch only).
   - Run `--create-only` once more. It must generate an empty migration; delete that.
   - Add the seed's delete step and run `pnpm db:seed` twice.
   - Restart any running `pnpm dev`, because it holds the old Prisma client.
-- [ ] **2. Types, schema, policy, presenter, with unit tests.**
+- [x] **2. Types, schema, policy, presenter, with unit tests.**
   - `schemas.test.ts`: both reasons pass; a missing, empty or unknown reason gets the message; extra keys are stripped.
   - `shift-policy.test.ts`: `canRecordNoShow` for every role, and every branch of `cancellationRefusal`, including its order.
   - `shift-presenter.test.ts`: `toCancelledShiftDTO` has exactly ten keys, and maps `no_show` to `"no-show"`.
-- [ ] **3. `cancelShift` and integration tests.** New file `tests/integration/cancellations.test.ts`.
+- [x] **3. `cancelShift` and integration tests.** New file `tests/integration/cancellations.test.ts`.
   - `tests/integration/shifts.test.ts` and `claims.test.ts` each carry their own copy of the seed check and `expectHttpError`. Move them to `tests/integration/support.ts` rather than adding a third copy.
   - Throwaway rows: two agencies, each with its user, and two nurses with valid credentials. The admin is the seeded `admin-1`. A helper creates a shift with `createShift` and fills it with `claimShift`.
   - Cases:
@@ -214,7 +214,7 @@ Add the back-relations to `Shift` and `User`.
     - Claim, cancel, claim again, cancel again: two `Cancellation` rows.
     - Race: an agency no-show and the nurse's advance cancel on one shift through `Promise.allSettled`, on five fresh shifts, with a 60 s timeout. Each time, exactly one call succeeds and the other gets `409`, there is one `Cancellation` row and one `shift_cancelled` row.
   - `afterAll` deletes the audit rows, then the shifts (their cancellations cascade), then the users and the agencies.
-- [ ] **4. Route and HTTP contract.** Add the route file and a new `e2e/cancel-api.spec.ts`. Throwaway shifts are posted as agency-a, dated in 2027-06, and claimed by Maria. The cases:
+- [x] **4. Route and HTTP contract.** Add the route file and a new `e2e/cancel-api.spec.ts`. Throwaway shifts are posted as agency-a, dated in 2027-06, and claimed by Maria. The cases:
   - An agency-a no-show: `200`, `no-store`, the exact ten keys and the `cancellation` object, and `GET /api/shifts` shows the shift open. A second cancel gets `409`.
   - Maria's advance cancel gets `200`; Maria's no-show gets `403`.
   - agency-b on agency-a's shift gets `403`. The admin's no-show gets `200`.
@@ -222,7 +222,7 @@ Add the back-relations to `Shift` and `User`.
   - A reopened shift can be claimed again.
 
   Track every created ID for cleanup. Check that `deleteOwnRows` leaves no `Cancellation` rows behind.
-- [ ] **5. UI.** Make the dialog and board changes above. Extend the e2e specs, using throwaway shifts dated in 2027-07 that no other spec uses, and never a seeded shift:
+- [x] **5. UI.** Make the dialog and board changes above. Extend the e2e specs, using throwaway shifts dated in 2027-07 that no other spec uses, and never a seeded shift:
   - `nurse-ui.spec.ts`: Maria cancels. The banner, the row moving from My shifts to Available shifts, and the reload.
   - `agency-ui.spec.ts`:
     - A filled row has exactly one `shift-cancel-button` and an open row has none.
@@ -230,12 +230,12 @@ Add the back-relations to `Shift` and `User`.
   - Both specs:
     - Pending state: delay the route. The buttons are disabled and the label changes, and Escape does nothing.
     - Failure: cancel the shift through the API first. The dialog shows the `409` in its `role="alert"` banner, and the list refreshes.
-- [ ] **6. Manual check** on `pnpm dev`, following [../../VERIFICATION.md](../../VERIFICATION.md) "Manual and UI verification":
+- [x] **6. Manual check** on `pnpm dev`, following [../../VERIFICATION.md](../../VERIFICATION.md) "Manual and UI verification":
   - Look at both dialogs at 375 px and 1440 px.
   - Cancel using only the keyboard: Tab to the button, Enter, arrow keys between the radios, Enter to confirm. Focus returns to the page when the dialog closes.
   - Make one `curl` cancel with a Bearer token.
   - Use only a shift posted for the check. Afterwards, name the rows you are about to delete, then delete exactly those by ID.
-- [ ] **7. Docs.**
+- [x] **7. Docs.**
   - ARCHITECTURE:
     - The status line.
     - §3: the cancel route is implemented.
@@ -251,7 +251,7 @@ Add the back-relations to `Shift` and `User`.
     - After a run the dev branch holds 0 `Cancellation` rows.
     - Update the Limitations line.
   - The tech-debt tracker: update TD-1.
-- [ ] **8. Verify and hand off.**
+- [x] **8. Verify and hand off.**
   - Run `pnpm verify` and record its real output.
   - Check the dev branch's row counts.
   - Tick the criteria that pass, and write down the next action.
@@ -280,12 +280,28 @@ Agent proposals, not yet reviewed by the owner:
 Discoveries:
 
 - 2026-10-17: the cancellation UI was being edited while this plan was written. The first `git status` showed 3 changed files, and a later one showed 8.
+- 2026-10-17: Prisma 7's `migrate dev` does not regenerate the client, so `pnpm exec prisma generate` is needed after the migration, and the running `pnpm dev` (pid 7113) held the old client and had to be restarted before the e2e specs could pass.
+- 2026-10-17: Playwright JSON-encodes a string `data` body even with `Content-Type: application/json`, so the malformed-JSON case sends `Buffer.from("{not json")`.
+- 2026-10-17: the audit metadata `reason` uses the API spelling (`"no-show"`), so only the presenter knows the database spelling.
+- 2026-10-17: the dev branch holds a fourth shift, `shift-0f568082-1f91-466a-9903-aafa905ef4fa` (agency-a, dated 2026-10-26, open). It was there before the first integration run finished and no spec in this repository creates that date, so it was not created by this plan's tests. It was left in place.
 - 2026-10-17: under `fullyParallel`, tests must never cancel a seeded shift, including the spec's own no-show example on `shift-2`, because other specs and the integration `beforeAll` require the seeded shifts' spec state.
 
 ## Verification
 
-Nothing has run yet.
+Actual results, 2026-10-17:
+
+- Baseline on the uncommitted UI: `pnpm lint`, `pnpm typecheck` and `pnpm build` clean; `playwright test e2e/nurse-ui.spec.ts e2e/agency-ui.spec.ts`: 13 passed. `.env.development` holds `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_BRANCH` and `AUTH_JWT_SECRET`.
+- Migration `20261018031038_cancellations` applied to the dev branch; a second `--create-only` produced an empty migration, which was deleted. `pnpm db:seed` ran twice.
+- `pnpm exec vitest run tests/integration`: 4 files, 49 passed, including five rounds of the concurrent cancel race.
+- `pnpm exec playwright test e2e/cancel-api.spec.ts e2e/claim-api.spec.ts e2e/shifts-api.spec.ts`: 26 passed.
+- Manual check on `pnpm dev`: both dialogs screenshotted at 375 px and 1440 px and read; the agency flow (arrow keys between the radios, Tab to "Report no-show", Enter) and the nurse flow (Tab to "Cancel shift", Enter, Tab to "Cancel assignment", Enter) work with the keyboard alone, and focus lands on the page (`BODY`) after the dialog closes because the row's trigger is removed. One `curl` no-show with a Bearer token returned `200`, `cache-control: no-store` and the ten-key body. The shift posted for that check (`shift-b6d5e4bd-b93f-4d3e-a2a5-f7af501da896`) was deleted by ID with its 2 audit rows and 1 cascaded `Cancellation` row.
+- `pnpm verify`: exit 0. `check:docs` passed, Vitest 13 files and 141 tests passed, Playwright 82 passed (lint, build and typecheck clean).
+- Dev branch counts after `pnpm verify`: `Shift` 4, `Credential` 2, `AuditEvent` 0, `Cancellation` 0, `Agency` 2, `User` 5.
+
+Outstanding: the last acceptance criterion needs 3 `Shift` rows, and the branch holds the fourth, unexplained one described under Discoveries. Every other criterion passed.
 
 ## Handoff or outcome
 
-Next action: step 0. Ask the owner whether the uncommitted cancellation UI is finished, then create `feat/shift-cancellation` and commit that UI as the baseline.
+Status stays Active until the owner decides what to do with `shift-0f568082-1f91-466a-9903-aafa905ef4fa`.
+
+Next action: ask the owner whether that shift can be deleted (it has no audit or cancellation rows). Once the branch holds exactly the 3 seeded shifts, tick the "Docs and checks" criterion, set Status to Complete, move this file to `docs/exec-plans/completed/`, repair links to the old path, and run `pnpm check:docs`.
