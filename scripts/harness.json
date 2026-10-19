@@ -18,6 +18,7 @@
     ".agents/skills/README.md",
     "scripts/check_harness.py",
     "playwright.config.ts",
+    ".github/workflows/ci.yml",
     "README.md"
   ],
   "forbidden": [
