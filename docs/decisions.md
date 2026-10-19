@@ -221,6 +221,17 @@ Agent defaults from the separation plan, not yet reviewed by the owner:
 - **`workspace.ts` is in `src/contracts/auth/`**: a role-to-path map the proxy imports.
 - **ESLint enforces the boundaries with `no-restricted-imports`**, so no new dependency. Frontend code (`features`, `shared`) cannot import `@/server`; contracts import no `@/server`, `@/features`, `@/actions`, `@/shared` or `server-only`; server code cannot import `@/features` or `@/actions`. Relative imports that reach those folders are refused too.
 
+### 2026-10-19: structure inside feature folders
+
+Agent defaults from the feature-folders plan, not yet reviewed by the owner:
+
+- **Folders by role: `views/`, `components/`, `hooks/`, `lib/`.** A view is a client screen that owns state and calls the server; a component is props in, JSX out. `views/` rather than `screens/` or `containers/`, because Next.js already uses "page" and "layout". Every feature has the same shape, and a folder exists only when it has content (`auth` has only `components/`).
+- **`contracts/` holds only what the server also uses.** `schedule`, `describe-event` and `hours` had no server consumer and moved to `features/<module>/lib/`.
+- **Two helper groups went to `shared/lib/`, one more than planned.** `formatDate` is used by credentials, audit, shifts and timesheets. `endsNextDay`, `durationHours` and `formatEndsOn` are used by shifts and by timesheets (`hours.ts` and the table), so leaving them in `shifts/lib/` would have kept a cross-feature import.
+- **`StatCard` is in `shared/ui/`, and the credentials banner reaches `Marketplace` as a `banner` prop** rendered by `nurse/page.tsx`. This resolves TD-20.
+- **No `hooks/` folder, no `use-shift-actions`.** `shift-board` and `marketplace` share only the `apiFetch` call and refresh-on-failure. Their notice types differ (a string against `{ kind, message }`), their cancel reasons differ (a variable against a fixed `"advance"`), and post exists only in the board and claim only in the marketplace. A hook would need options for each difference.
+- **ESLint generates one `no-restricted-imports` block per feature** from a list of names, refusing `@/features/<other>/**` and relative paths that climb into another feature. `shared` also cannot import `@/features`. Adding a feature means adding its name to the list in `eslint.config.mjs`.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.

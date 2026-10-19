@@ -22,7 +22,7 @@ This is a design for the assessment, not evidence of production healthcare compl
 | --- | --- | --- |
 | Application | Next.js App Router with TypeScript | One codebase and deployment for the React UI and required HTTP API |
 | HTTP API | Route Handlers under `src/app/api`, Node.js runtime | Preserve the exact externally tested routes |
-| Code organization | `src/features/` (frontend only), `src/server/`, `src/contracts/`, `src/actions/` | The frontend cannot import server code, and ESLint enforces it (§3) |
+| Code organization | `src/features/` (frontend only, split into `views/`, `components/`, `hooks/` and `lib/`), `src/server/`, `src/contracts/`, `src/actions/`, `src/shared/` | The frontend cannot import server code, and ESLint enforces it (§3) |
 | Styling | Tailwind CSS with reusable accessible primitives | Consistent UI with limited setup |
 | Client server-state | Proposal: TanStack Query, deferred until a view needs polling or cross-view invalidation. The agency board renders on the server and refreshes with `router.refresh()` after a mutation, through a small same-origin API client. The admin shift overview is also a Server Component: it refreshes through `useServerRefresh` from its Refresh button and when the browser tab becomes visible again, with no timer | Request lifecycle, mutation state, and query invalidation once more than one view shares shift data |
 | Persistence | Neon Postgres through Prisma | Persistent hosted data, migrations, and transactional writes |
@@ -57,8 +57,8 @@ flowchart TD
 - Services in `src/server/<module>/` implement use cases and business rules.
 - Prisma queries belong in those server modules or small repositories that have a concrete purpose.
 - `src/server/` also holds database configuration (`db.ts`), common error mapping (`errors.ts`) and `readJson`/form parsing (`http.ts`). Token verification and session resolution live in `server/auth/`.
-- **Three folders, one rule.** `src/server/<module>/` is server code, `src/contracts/<module>/` is what the frontend and the server share (DTO types, Zod schemas, enums, pure helpers), and `src/actions/<module>.ts` holds the Server Actions. `src/features/` is components, hooks and UI helpers only. Actions are the public client-to-server entry besides `src/app/api/`, and they import from `@/server` and `@/contracts`.
-- Client components cannot import Prisma, token signing code, file-storage credentials, or server modules. `eslint.config.mjs` enforces the folder rules: `features` and `shared` cannot import `@/server`; `contracts` cannot import `@/server`, `@/features`, `@/actions`, `@/shared` or `server-only`; `server` cannot import `@/features` or `@/actions`.
+- **Three folders, one rule.** `src/server/<module>/` is server code, `src/contracts/<module>/` is what the frontend and the server share (DTO types, Zod schemas, enums, pure helpers), and `src/actions/<module>.ts` holds the Server Actions. `src/features/` is frontend code only: client screens, presentational components, hooks and UI-only helpers (layout below). `contracts/` holds only what the server also uses; a helper only the frontend needs lives in `features/<module>/lib/`, or in `shared/lib/` when two features need it. Actions are the public client-to-server entry besides `src/app/api/`, and they import from `@/server` and `@/contracts`.
+- Client components cannot import Prisma, token signing code, file-storage credentials, or server modules. `eslint.config.mjs` enforces the folder rules: `features` and `shared` cannot import `@/server`; `contracts` cannot import `@/server`, `@/features`, `@/actions`, `@/shared` or `server-only`; `server` cannot import `@/features` or `@/actions`. A feature cannot import another feature, and `shared` cannot import `@/features`; `app/` composes features by passing one feature's component into another feature's view as a prop.
 - Use `server-only` at sensitive module boundaries. Treat UI visibility as presentation, never authorization.
 
 Avoid adding generic repository interfaces, dependency-injection containers, or extra layers without a concrete need. Named functions with explicit inputs and a few injectable dependencies are sufficient.
@@ -103,7 +103,6 @@ src/
   contracts/                    # shared by the frontend and the server; no server-only, no @/server
     audit/
       types.ts                  # implemented
-      describe-event.ts         # implemented: action labels and details for the table
     auth/
       types.ts                  # implemented
       schemas.ts                # implemented
@@ -116,10 +115,8 @@ src/
     shifts/
       types.ts                  # implemented: ShiftDTO, CancelledShiftDTO, AgencyShift, CANCELLATION_REASONS
       schemas.ts                # implemented: newShiftSchema and cancelShiftSchema, shared by the dialogs and the API
-      schedule.ts               # implemented: display helpers
     timesheets/
       types.ts                  # implemented: TimesheetEntry
-      hours.ts                  # implemented: formatHours, totalScheduledHours, timesheetTotals
   server/                       # frontend code cannot import it
     db.ts                       # implemented
     errors.ts                   # implemented
@@ -144,14 +141,27 @@ src/
     timesheets/
       timesheet-presenter.ts    # implemented: toTimesheetEntries merges and orders assignments and history
       timesheet-service.ts      # implemented: listTimesheetEntries(scope)
-  features/                     # frontend only: components, hooks, UI helpers
-    auth/components/            # implemented: login form
-    shifts/components/          # implemented: the agency board, post-a-shift dialog, marketplace and admin overview
-    credentials/components/     # implemented: credential banner, upload form, current credential card
-    audit/components/           # implemented: audit log page and table
-    timesheets/components/      # implemented: timesheet panel and table for all three roles
+  features/                     # frontend only; a feature never imports another feature
+    auth/
+      components/               # implemented: login form
+    shifts/
+      views/                    # implemented: client screens that own state and call the API: shift-board, marketplace, admin-shift-overview
+      components/               # implemented: presentational tables, badges, tabs and the post and reopen dialogs
+      lib/                      # implemented: schedule (summarize, formatTimeRange, compareShifts) and its test
+    credentials/
+      views/                    # implemented: credential-upload-form
+      components/               # implemented: credential banner, current credential card
+    audit/
+      views/                    # implemented: audit-log
+      components/               # implemented: audit-log-table
+      lib/                      # implemented: describe-event (action labels and details) and its test
+    timesheets/
+      views/                    # implemented: timesheet
+      components/               # implemented: timesheet-table
+      lib/                      # implemented: hours (formatHours, totalScheduledHours, timesheetTotals) and its test
   shared/
-    ui/
+    ui/                         # implemented: icons, logo, sidebar, stat-card
+    lib/                        # implemented: dates (formatDate) and shift-time (endsNextDay, durationHours, formatEndsOn), with tests
     client/api-client.ts        # implemented: apiFetch
     client/use-server-refresh.ts # implemented: refreshes Server Component data (router.refresh)
 prisma.config.ts                # implemented
@@ -175,17 +185,17 @@ The six required API routes are fixed. All other routes listed above are propose
 ### Dependency rules
 
 - `app/` composes features and adapts framework requests; features never import from `app/`.
-- Feature components depend on their own hooks, `@/contracts` and `@/actions`, plus shared UI/client utilities.
+- Within a feature, `views/` may use `components/`, `hooks/` and `lib/`, `@/contracts`, `@/actions` and `@/shared`. `components/` stays presentational: no `apiFetch`, no server calls. `lib/` holds UI-only pure helpers with no React and no I/O. `hooks/` appears only when two views share state or mutation logic; none exists yet.
 - Server services depend on explicit actor/context inputs, policies, and persistence functions.
 - Contracts depend on nothing but other contracts and libraries.
 - Shared modules remain feature-independent. Avoid turning `shared/` into a collection of unrelated business rules.
-- Cross-feature calls use named service functions or public types. Do not reach into another feature's internal components or query implementation.
+- Features never import each other, and ESLint refuses it. Reuse goes through `shared/` or through composition in `app/`. On the server, cross-module calls use named service functions or public types.
 - Keep server and client exports separate; a barrel file must not make server-only dependencies reachable from a Client Component.
 - Add a repository wrapper only when it improves query reuse, transaction handling, or testability. Do not wrap every Prisma call mechanically.
 
 ## 4. Frontend architecture
 
-Each feature owns its components and hooks. Its input schemas and public DTO types live in `src/contracts/<module>/` and its server implementation in `src/server/<module>/`. Reuse framework-independent types and safe validation code across boundaries through contracts; never expose database models as browser contracts.
+Each feature owns its views, components and UI helpers. Its input schemas and public DTO types live in `src/contracts/<module>/` and its server implementation in `src/server/<module>/`. Reuse framework-independent types and safe validation code across boundaries through contracts; never expose database models as browser contracts.
 
 ### State ownership
 
