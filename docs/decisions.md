@@ -198,6 +198,16 @@ Agent defaults, not yet reviewed by the owner:
 - **The admin page refreshes on tab return**, as the overview and audit log do; nurse and agency pages do not.
 - **No admin agency filter.** The admin table stacks below `xl`.
 
+### 2026-10-18: CI and deployment decisions
+
+Agent defaults from the CI and deployment plan, not yet reviewed by the owner:
+
+- **Two GitHub secrets only: `DEV_DATABASE_URL` and `DEV_DATABASE_URL_UNPOOLED`.** `NEON_BRANCH: dev` is a literal in the workflow, and `AUTH_JWT_SECRET` is generated per run, because every token in a run is signed and verified inside it.
+- **Vercel holds only `DATABASE_URL` and `AUTH_JWT_SECRET`, in Production only.** `DATABASE_URL_UNPOOLED` and `NEON_BRANCH` aren't read at runtime.
+- **`engines.node` is `"24.x"`**, matching `.nvmrc` and making Vercel's Node version deterministic.
+- **Production seeding is a separate script with an explicit flag** (`pnpm db:seed:production`), not an environment variable that loosens the dev-branch guard.
+- **gitleaks runs as a checksum-verified binary**, not through `gitleaks/gitleaks-action`, whose v2 tag still declares `node20` and comes under a commercial licence.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.

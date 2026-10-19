@@ -1,6 +1,6 @@
 # CI and Vercel deployment
 
-Status: Completed (closed by the owner on 2026-10-18 with open items, see Handoff or outcome)
+Status: Completed (closed by the owner on 2026-10-18 with open items; three remain after the post-close verification, see Handoff or outcome)
 Owner: Erika De LA O (decisions) / agent (implementation)
 Created: 2026-10-18
 
@@ -14,29 +14,29 @@ Acceptance:
 
 **CI**
 
-- [ ] `.github/workflows/ci.yml` runs on push to `main`, on every pull request, and on `workflow_dispatch`. It has three jobs with stable display names: `Secret scan`, `Checks` and `Tests`.
-- [ ] `Checks` runs these in order: `pnpm check:docs`; both Python suites (`python3 -m unittest discover -s scripts -p "test_*.py"`); `pnpm lint`; `pnpm build`; `pnpm typecheck`. The job holds no database secret.
-- [ ] `Tests` runs `pnpm test` and `pnpm test:e2e` against the Neon `dev` branch. Its connection strings come from repository secrets. A job-level concurrency group queues runs so that no two ever overlap. When the job fails, it uploads the Playwright report and traces.
-- [ ] The first run on GitHub is green on all three jobs for the pushed commit, at the same counts as the local baseline (217 Vitest, 110 Playwright) or the counts at that time. The run URL and the number of flaky (retried) tests are recorded under Verification.
+- [x] `.github/workflows/ci.yml` runs on push to `main`, on every pull request, and on `workflow_dispatch`. It has three jobs with stable display names: `Secret scan`, `Checks` and `Tests`.
+- [x] `Checks` runs these in order: `pnpm check:docs`; both Python suites (`python3 -m unittest discover -s scripts -p "test_*.py"`); `pnpm lint`; `pnpm build`; `pnpm typecheck`. The job holds no database secret.
+- [x] `Tests` runs `pnpm test` and `pnpm test:e2e` against the Neon `dev` branch. Its connection strings come from repository secrets. A job-level concurrency group queues runs so that no two ever overlap. When the job fails, it uploads the Playwright report and traces.
+- [x] The first run on GitHub is green on all three jobs for the pushed commit, at the same counts as the local baseline (217 Vitest, 110 Playwright) or the counts at that time. The run URL and the number of flaky (retried) tests are recorded under Verification.
   - No `continue-on-error`.
   - No skipped or disabled checks.
   - No new lint suppressions.
-- [ ] Hardening:
+- [x] Hardening:
   - Every action is pinned to a full commit SHA, with the version as a comment.
   - The workflow sets `permissions: contents: read`.
   - Checkout uses `persist-credentials: false`.
   - There is no `pull_request_target` trigger.
   - The runner is pinned to `ubuntu-24.04`.
-- [ ] A clean export of the commit, with no `.env*` files present, passes `pnpm install --frozen-lockfile`, `pnpm build` and `pnpm typecheck` locally. This proves `Checks` needs no secrets.
+- [x] A clean export of the commit, with no `.env*` files present, passes `pnpm install --frozen-lockfile`, `pnpm build` and `pnpm typecheck` locally. This proves `Checks` needs no secrets.
 
 **Secrets out of history**
 
-- [ ] `Secret scan` downloads gitleaks v8.30.1, verifies it against the pinned SHA-256, and runs `gitleaks git --redact --verbose` over the full history of every ref (checkout `fetch-depth: 0`). Any finding fails the run.
-- [ ] A local run of the same scan over today's history reports zero findings, or every finding is triaged:
+- [x] `Secret scan` downloads gitleaks v8.30.1, verifies it against the pinned SHA-256, and runs `gitleaks git --redact --verbose` over the full history of every ref (checkout `fetch-depth: 0`). Any finding fails the run.
+- [x] A local run of the same scan over today's history reports zero findings, or every finding is triaged:
   - A real secret stops this plan for rotation and history rewriting, with the owner deciding.
   - A false positive gets a narrowly scoped `.gitleaks.toml` entry with a stated reason. The default rules stay on (`[extend] useDefault = true`).
-- [ ] The scan is shown to catch a planted fake credential. Run it against a throwaway scratch repository, never this one.
-- [ ] GitHub secret scanning and push protection are enabled on the repository and confirmed through the API or the settings page.
+- [x] The scan is shown to catch a planted fake credential. Run it against a throwaway scratch repository, never this one.
+- [x] GitHub secret scanning and push protection are enabled on the repository and confirmed through the API or the settings page.
 - [ ] After the final commit, nothing secret has leaked:
   - The counts-only scan of history for the real local secret values (see Verification) still reports 0.
   - The first CI log and the first Vercel build log contain no secret value.
@@ -45,16 +45,16 @@ Acceptance:
 
 - [x] The production Neon branch is migrated with `NODE_ENV=production pnpm db:deploy`, after a read-only `prisma migrate status` and with the owner's go-ahead.
 - [x] The explicit production seed override exists. ARCHITECTURE §12: "`pnpm db:seed` refuses production, and the deployment plan adds the explicit override". It has unit tests and has been run once against production with the owner's go-ahead. The plain `pnpm db:seed` still refuses anything but `dev`.
-- [ ] `vercel.json` deploys `main` only, using `{"git": {"deploymentEnabled": {"main": true, "**": false}}}`. Pushing the feature branch creates no Vercel deployment, and that observation is recorded.
-- [ ] The Vercel project is linked to the GitHub repository (Git integration). Its Production environment holds only `DATABASE_URL` (the production pooled URL) and a fresh `AUTH_JWT_SECRET`, both of type Secret. Both are piped over stdin, so no value appears in a command, output or this repository.
+- [x] `vercel.json` deploys `main` only, using `{"git": {"deploymentEnabled": {"main": true, "**": false}}}`. Pushing the feature branch creates no Vercel deployment, and that observation is recorded.
+- [x] The Vercel project is linked to the GitHub repository (Git integration). Its Production environment holds only `DATABASE_URL` (the production pooled URL) and a fresh `AUTH_JWT_SECRET`, both of type Secret. Both are piped over stdin, so no value appears in a command, output or this repository.
 - [ ] Vercel Deployment Checks require `Secret scan`, `Checks` and `Tests` before a production deployment is promoted. Whether this also holds back the default `<project>.vercel.app` alias, and not just custom domains, is observed and recorded.
-- [ ] The public production URL passes a smoke check in a fresh, signed-out browser session, with no Vercel login:
+- [x] The public production URL passes a smoke check in a fresh, signed-out browser session, with no Vercel login:
   - `GET /api/health` returns `200 {"status":"ok"}`.
   - `POST /api/auth/login` returns a token for one account of each role.
   - Browser sign-in lands each role on its page.
   - `GET /api/credentials/document` with no token returns the `401` JSON, not a cached response.
-- [ ] Any mutating smoke check runs only with the owner's go-ahead. These are a posted shift that persists across a reload, and the one deployed credential upload/download check that ARCHITECTURE §11 asks for.
-- [ ] These documents describe what now exists:
+- [x] Any mutating smoke check runs only with the owner's go-ahead. These are a posted shift that persists across a reload, and the one deployed credential upload/download check that ARCHITECTURE §11 asks for.
+- [x] These documents describe what now exists:
   - VERIFICATION.md: the CI section, and "There is no CI" removed.
   - ARCHITECTURE.md §2, §11 and §12: the URL, deploy gating, the production seed command, and which variables Vercel holds.
   - README.md: CI and deploy. Also fix the stale "the shift features are not yet" line.
@@ -292,3 +292,16 @@ Outstanding: Phase A acceptance items still to confirm (secret scan of the first
 **Next action:** Phase B ⏸ owner, in the Vercel dashboard: automatic aliasing on, and Deployment Checks requiring `Secret scan`, `Checks` and `Tests`. Then push `chore/ci-and-deploy` and confirm it creates no Vercel deployment. The project is created, linked and Git-connected, and both Production variables are set. PR #1 is merged. The seed override (`94158c4`), `vercel.json` and `engines.node` (`ebb721e`) and the progress notes (`308e7f7`) are committed on `chore/ci-and-deploy`, not yet pushed. `pnpm test` and `pnpm test:e2e` for the `prisma/` change run in the pre-push hook. The production database is migrated and seeded.
 
 **Closed by the owner, 2026-10-18.** The owner asked for this plan to be moved to `completed/` and pushed. Not every acceptance box above is ticked, and no agent verified the remaining ones when it was closed: the dashboard Deployment Checks and automatic aliasing, the merge-to-`main` watch (CI, Vercel build log, promotion), the smoke checks on the public URL, the documentation updates, the final history re-scan, and a final `pnpm verify` on the closing tree. Treat those as unconfirmed, not passed.
+
+**Post-close verification, 2026-10-18.** An agent ticked the boxes it could back with evidence:
+
+- CI: the workflow matches every CI and secret-scan criterion: the triggers, job names, step order, secrets, concurrency group, failure upload, SHA pins, `permissions: contents: read`, `persist-credentials: false`, `ubuntu-24.04`, and no `pull_request_target` or `continue-on-error`. No lint suppression or skipped test was added since `19a3359`. Every CI run so far is green; the latest on `main`, run 39186278665 at `e1034fe`, passed `Secret scan` ("no leaks found"), `Checks` and `Tests` (110 Playwright passed).
+- Production URL: <https://shiftpatch-tau.vercel.app>. `shiftpatch.vercel.app` is an unrelated project, and `shiftpatch-erika-de-la-o.vercel.app` redirects to a Vercel login. Signed-out checks: `/api/health` returned `200 {"status":"ok"}`; `GET /api/credentials/document` with no token returned `401 {"error":"Authentication required"}` with `Cache-Control: no-store` and `x-vercel-cache: MISS`; all five accounts signed in through the API with the spec shape; `GET /api/shifts` returned the nine keys with the three seeded shifts in spec state; agency scoping held (own shifts, `403` across agencies and for a nurse, the admin reads any); and all five signed in through a browser, landed on `/agency`, `/nurse` or `/admin`, and signed out. Every session was signed out and its token then rejected.
+- Checks that change data: the owner ran James's claim, a credential upload and download, and a post-claim-cancel round trip in the browser and reported all of them working. Read-backs agreed: `shift-1` was still open with no nurse, Maria's document downloaded (a 21.7 KB JPEG), and a shift agency-a had posted earlier was still there, claimed.
+- Docs: README, VERIFICATION, HOOKS, ARCHITECTURE, decisions and the tech-debt tracker now describe CI and the deployment. TD-2 and TD-5 are removed; TD-18 (build-log noise) and TD-19 (CI and local runs sharing `dev`) are added.
+
+Still open:
+
+- **Nothing secret has leaked.** The value scan of history and of the first CI and Vercel build logs was not re-run after the merge. gitleaks reports no leaks on every CI run, but it matches rules, not the real values.
+- **Deployment Checks.** On `e1034fe` the Vercel status went from "Vercel is deploying your app" to "Waiting for checks to complete" to "Deployment has completed", so a check gate exists. Which checks the dashboard requires, and whether the gate holds the production alias, was not confirmed.
+- **`pnpm verify` on the final tree failed** with exit 1: check:docs passed, lint clean, build compiled, typecheck clean, Vitest "Test Files 23 passed (23) / Tests 220 passed (220)", Playwright "1 failed, 109 passed". The failure is a test locator, not app behavior: `e2e/nurse-ui.spec.ts:75` calls `getByLabel("Agency")`, which also matched the Claim buttons of throwaway agencies that parallel specs had just posted ("Claim RN shift on Dec 1, 2026 with Throwaway Agency"), giving a strict-mode violation on 11 elements. It depends on timing: the same test passed in CI on `e1034fe` and in a local run at `19a3359`. The fix is `{ exact: true }` on the `Agency` and `Role` filter locators at lines 75 and 78.
