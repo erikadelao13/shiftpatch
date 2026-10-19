@@ -48,7 +48,7 @@ pnpm verify                                      # full, before handoff
 | `scripts/check_harness.py`, `scripts/pinned_node.py`, `scripts/harness.json` | `pnpm check:docs` and `python3 -m unittest discover -s scripts -p "test_harness.py"` |
 | `scripts/claude_hooks.py` | the above plus `python3 -m unittest discover -s scripts -p "test_claude_hooks.py"` |
 | TypeScript or TSX under `src/` | `pnpm lint`, `pnpm typecheck`, `pnpm build` |
-| `prisma/`, `prisma.config.ts`, `src/shared/server/`, `src/features/*/server/`, `src/proxy.ts`, `src/app/api/` | the above plus `pnpm test` and `pnpm test:e2e` |
+| `prisma/`, `prisma.config.ts`, `src/server/`, `src/contracts/`, `src/actions/`, `src/proxy.ts`, `src/app/api/` | the above plus `pnpm test` and `pnpm test:e2e` |
 | Anything users can see or interact with | the above plus `pnpm test:e2e`, plus a manual look at the affected screen |
 | `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `package.json`, lockfile, `.npmrc`, `.nvmrc` | `pnpm verify` in full |
 | `.githooks/*` or `.claude/settings.json` | the hook tests in [HOOKS.md](HOOKS.md), plus `pnpm check:docs` |

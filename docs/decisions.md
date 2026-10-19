@@ -36,6 +36,10 @@ Both a database enum and a zod enum; any other role gets `400`. Adding a role ta
 
 See [exec-plans/completed/2026-10-18-ci-and-vercel-deployment.md](exec-plans/completed/2026-10-18-ci-and-vercel-deployment.md).
 
+### 2026-10-19: server code, contracts and Server Actions live outside `src/features/`
+
+`src/features/` is frontend only. Server code lives in `src/server/<module>/`, the contracts the frontend and the server share (DTO types, Zod schemas, enums, pure helpers) in `src/contracts/<module>/`, and Server Actions in `src/actions/<module>.ts`. Actions are the public client-to-server boundary, so they sit beside `src/server/`, which frontend code cannot import. Behavior did not change. See [../ARCHITECTURE.md](../ARCHITECTURE.md) §3.
+
 ## Agent defaults
 
 Chosen by the implementing agent where the spec was silent. Not yet reviewed by the owner; treat them as defaults and change them with a dated entry.
@@ -207,6 +211,15 @@ Agent defaults from the CI and deployment plan, not yet reviewed by the owner:
 - **`engines.node` is `"24.x"`**, matching `.nvmrc` and making Vercel's Node version deterministic.
 - **Production seeding is a separate script with an explicit flag** (`pnpm db:seed:production`), not an environment variable that loosens the dev-branch guard.
 - **gitleaks runs as a checksum-verified binary**, not through `gitleaks/gitleaks-action`, whose v2 tag still declares `node20` and comes under a commercial licence.
+
+### 2026-10-19: placements and lint rules for the server/contracts/actions split
+
+Agent defaults from the separation plan, not yet reviewed by the owner:
+
+- **`use-server-refresh` is in `src/shared/client/`.** Three features use it, and features must not import each other's internals.
+- **`constants.ts` is in `src/server/auth/` and stays free of `server-only`**, because `src/proxy.ts` imports it. `password.ts` and `token.ts` keep the same rule for the seed script and the proxy.
+- **`workspace.ts` is in `src/contracts/auth/`**: a role-to-path map the proxy imports.
+- **ESLint enforces the boundaries with `no-restricted-imports`**, so no new dependency. Frontend code (`features`, `shared`) cannot import `@/server`; contracts import no `@/server`, `@/features`, `@/actions`, `@/shared` or `server-only`; server code cannot import `@/features` or `@/actions`. Relative imports that reach those folders are refused too.
 
 ## Open items
 
