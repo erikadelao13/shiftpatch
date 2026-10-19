@@ -168,11 +168,11 @@ Work on a branch, `chore/ci-and-deploy`, and commit by context (the `contextual-
 
 **Phase B: Deployment**
 
-- [ ] Production seed override (proposal, see Decisions). Add `pnpm db:seed:production`, which runs `NODE_ENV=production tsx prisma/seed.ts --production`.
+- [x] Production seed override (proposal, see Decisions). Add `pnpm db:seed:production`, which runs `NODE_ENV=production tsx prisma/seed.ts --production`.
   - Only with `--production`: load `.env` alone (`loadEnvConfig(cwd, false)`) and require `NODE_ENV=production` and `NEON_BRANCH=production`.
   - Without the flag, nothing changes.
   - Unit-test the guard. VERIFICATION requires `pnpm test` and `pnpm test:e2e` for `prisma/` changes.
-- [ ] `vercel.json` with `git.deploymentEnabled`. `package.json` `engines.node` set to `"24.x"` (proposal, see Decisions), with the README and VERIFICATION prerequisites updated to match.
+- [x] `vercel.json` with `git.deploymentEnabled`. `package.json` `engines.node` set to `"24.x"` (proposal, see Decisions), with the README and VERIFICATION prerequisites updated to match.
 - [ ] ⏸ Production database:
   1. Read-only `NODE_ENV=production pnpm exec prisma migrate status`. Report the output.
   2. `NODE_ENV=production pnpm db:deploy`.
@@ -268,4 +268,4 @@ Outstanding: Phase A acceptance items still to confirm (secret scan of the first
 
 ## Handoff or outcome
 
-**Next action:** Phase B, first step: the production seed override (`pnpm db:seed:production`) with unit tests, on `chore/ci-and-deploy` (PR #1 is open and green; do not merge yet). Then `vercel.json` and `engines.node`.
+**Next action:** Phase B ⏸ production database: read-only `NODE_ENV=production pnpm exec prisma migrate status`, then `NODE_ENV=production pnpm db:deploy`, then `pnpm db:seed:production`, each with the owner's go-ahead. PR #1 is merged. The seed override (`94158c4`), `vercel.json` and `engines.node` (`ebb721e`) are committed on `chore/ci-and-deploy`, not yet pushed. `pnpm test` and `pnpm test:e2e` for the `prisma/` change run in the pre-push hook.
