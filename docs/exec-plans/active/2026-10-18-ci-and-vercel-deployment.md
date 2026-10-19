@@ -43,8 +43,8 @@ Acceptance:
 
 **Deployment**
 
-- [ ] The production Neon branch is migrated with `NODE_ENV=production pnpm db:deploy`, after a read-only `prisma migrate status` and with the owner's go-ahead.
-- [ ] The explicit production seed override exists. ARCHITECTURE §12: "`pnpm db:seed` refuses production, and the deployment plan adds the explicit override". It has unit tests and has been run once against production with the owner's go-ahead. The plain `pnpm db:seed` still refuses anything but `dev`.
+- [x] The production Neon branch is migrated with `NODE_ENV=production pnpm db:deploy`, after a read-only `prisma migrate status` and with the owner's go-ahead.
+- [x] The explicit production seed override exists. ARCHITECTURE §12: "`pnpm db:seed` refuses production, and the deployment plan adds the explicit override". It has unit tests and has been run once against production with the owner's go-ahead. The plain `pnpm db:seed` still refuses anything but `dev`.
 - [ ] `vercel.json` deploys `main` only, using `{"git": {"deploymentEnabled": {"main": true, "**": false}}}`. Pushing the feature branch creates no Vercel deployment, and that observation is recorded.
 - [ ] The Vercel project is linked to the GitHub repository (Git integration). Its Production environment holds only `DATABASE_URL` (the production pooled URL) and a fresh `AUTH_JWT_SECRET`, both of type Secret. Both are piped over stdin, so no value appears in a command, output or this repository.
 - [ ] Vercel Deployment Checks require `Secret scan`, `Checks` and `Tests` before a production deployment is promoted. Whether this also holds back the default `<project>.vercel.app` alias, and not just custom domains, is observed and recorded.
@@ -168,18 +168,18 @@ Work on a branch, `chore/ci-and-deploy`, and commit by context (the `contextual-
 
 **Phase B: Deployment**
 
-- [ ] Production seed override (proposal, see Decisions). Add `pnpm db:seed:production`, which runs `NODE_ENV=production tsx prisma/seed.ts --production`.
+- [x] Production seed override (proposal, see Decisions). Add `pnpm db:seed:production`, which runs `NODE_ENV=production tsx prisma/seed.ts --production`.
   - Only with `--production`: load `.env` alone (`loadEnvConfig(cwd, false)`) and require `NODE_ENV=production` and `NEON_BRANCH=production`.
   - Without the flag, nothing changes.
   - Unit-test the guard. VERIFICATION requires `pnpm test` and `pnpm test:e2e` for `prisma/` changes.
-- [ ] `vercel.json` with `git.deploymentEnabled`. `package.json` `engines.node` set to `"24.x"` (proposal, see Decisions), with the README and VERIFICATION prerequisites updated to match.
-- [ ] ⏸ Production database:
+- [x] `vercel.json` with `git.deploymentEnabled`. `package.json` `engines.node` set to `"24.x"` (proposal, see Decisions), with the README and VERIFICATION prerequisites updated to match.
+- [x] ⏸ Production database:
   1. Read-only `NODE_ENV=production pnpm exec prisma migrate status`. Report the output.
   2. `NODE_ENV=production pnpm db:deploy`.
   3. `pnpm db:seed:production`.
 
   Before running, say that re-running the seed later resets the three fixture shifts, their cancellations, the fixture nurses' documents and the fixture passwords on production.
-- [ ] ⏸ Owner logs in with `! pnpm dlx vercel@<version> login`. Then:
+- [x] ⏸ Owner logs in with `! pnpm dlx vercel@64.5.0 login`. Then:
   1. Create and link the project (`vercel link`; `.vercel/` is gitignored).
   2. Add the Production variables over stdin:
      - `DATABASE_URL` from `.env`.
@@ -190,7 +190,7 @@ Work on a branch, `chore/ci-and-deploy`, and commit by context (the `contextual-
 - [ ] ⏸ Owner, in the dashboard:
   - Settings → Environments → Production: automatic aliasing on.
   - Settings → Build and Deployment → Deployment Checks → Add Checks → GitHub: require `Secret scan`, `Checks` and `Tests`.
-- [ ] Confirm the pushed feature branch produced no Vercel deployment.
+- [x] Confirm the pushed feature branch produced no Vercel deployment. After pushing `0bbe483`, `vercel ls` reported "No deployments found" (checked about a minute after the push).
 - [ ] ⏸ Merge the pull request into `main`, using the method the owner chooses. Watch:
   1. CI on `main`.
   2. The Vercel build. Check its log for the pnpm version, the Node version, `prisma generate` and any secret values.
@@ -264,8 +264,29 @@ Phase A, GitHub, 2026-10-18:
 | `git push` of `chore/ci-and-deploy` | `pre-push` ran `pnpm verify`; "110 passed (1.2m)"; pushed |
 | First CI run on PR #1, https://github.com/erikadelao13/shiftpatch/actions/runs/39178690222 | `Secret scan` pass (6 s), `Checks` pass (1m23s), `Tests` pass (2m19s). Vitest 23 files, 217 passed; Playwright 110 passed. No flaky tests reported. |
 
-Outstanding: Phase A acceptance items still to confirm (secret scan of the first CI log, final history re-scan), and all of Phase B.
+Phase B, production database, 2026-10-18, with the owner's go-ahead:
+
+| Check | Result |
+| --- | --- |
+| `NODE_ENV=production pnpm exec prisma migrate status` (read-only), target `neondb` on `ep-round-sea-b7o056le` | 6 migrations found, all 6 not yet applied |
+| `NODE_ENV=production pnpm db:deploy` | applied `init`, `shifts`, `credentials_and_audit`, `cancellations`, `credential_documents`, `audit_shift_posted`; "All migrations have been successfully applied." |
+| `NODE_ENV=production pnpm exec prisma migrate status` after the deploy | "Database schema is up to date!" |
+| `pnpm db:seed:production` | "Seeded 2 agencies, 5 users, 3 shifts and 2 credentials on branch "production"." |
+
+Re-running `pnpm db:seed:production` resets the three fixture shifts, their cancellations, the fixture nurses' documents and the fixture passwords on production.
+
+Phase B, Vercel, 2026-10-18:
+
+| Check | Result |
+| --- | --- |
+| Vercel CLI | `vercel@64.5.0`, published 2026-10-16. This breaks the Decisions rule of a release at least 14 days old, and was used by mistake. The CLI only manages project settings here, and the owner can re-pin an older release for later steps. |
+| `vercel link --yes --project shiftpatch --scope erika-de-la-o` | created `erika-de-la-o/shiftpatch` (hobby team) and linked it. It also wrote a gitignored `.env.local` holding a `VERCEL_OIDC_TOKEN`, which nothing here uses. |
+| `vercel git connect` | failed twice: first no GitHub Login Connection (400), then no repository access. The owner connected GitHub under Account Settings → Authentication, then installed the Vercel GitHub App on `shiftpatch` only. After that: "Connected". |
+| `vercel env add` for `DATABASE_URL` and `AUTH_JWT_SECRET`, run by the owner over stdin with `--sensitive` | `vercel env ls production` lists both as Secret, Production only, value Hidden. `DATABASE_URL` is the pooled host. |
+| `vercel ls` | "No deployments found" |
+
+Outstanding: Phase A acceptance items still to confirm (secret scan of the first CI log, final history re-scan), the dashboard Deployment Checks, pushing the branch, and the merge and smoke checks.
 
 ## Handoff or outcome
 
-**Next action:** Phase B, first step: the production seed override (`pnpm db:seed:production`) with unit tests, on `chore/ci-and-deploy` (PR #1 is open and green; do not merge yet). Then `vercel.json` and `engines.node`.
+**Next action:** Phase B ⏸ owner, in the Vercel dashboard: automatic aliasing on, and Deployment Checks requiring `Secret scan`, `Checks` and `Tests`. Then push `chore/ci-and-deploy` and confirm it creates no Vercel deployment. The project is created, linked and Git-connected, and both Production variables are set. PR #1 is merged. The seed override (`94158c4`), `vercel.json` and `engines.node` (`ebb721e`) and the progress notes (`308e7f7`) are committed on `chore/ci-and-deploy`, not yet pushed. `pnpm test` and `pnpm test:e2e` for the `prisma/` change run in the pre-push hook. The production database is migrated and seeded.

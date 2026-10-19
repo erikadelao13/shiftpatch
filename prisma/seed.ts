@@ -3,7 +3,7 @@ import { loadEnvConfig } from "@next/env";
 
 import { PrismaClient } from "../src/generated/prisma/client";
 import { hashPassword } from "../src/features/auth/server/password";
-import { assertDevBranch } from "./branch-guard";
+import { assertDevBranch, assertProductionSeed, isProductionSeed } from "./branch-guard";
 import {
   FIXTURE_PASSWORD,
   fixtureAgencies,
@@ -12,11 +12,15 @@ import {
   fixtureUsers,
 } from "./fixtures";
 
-// `.env` holds production; load the development files over it.
-loadEnvConfig(process.cwd(), true);
+const production = isProductionSeed(process.argv);
+
+// `.env` holds production; a dev seed loads the development files over it, and
+// the production seed loads `.env` alone.
+loadEnvConfig(process.cwd(), !production);
 
 async function main() {
-  assertDevBranch("seed the database");
+  if (production) assertProductionSeed();
+  else assertDevBranch("seed the database");
 
   const connectionString = process.env.DATABASE_URL_UNPOOLED;
   if (!connectionString) throw new Error("DATABASE_URL_UNPOOLED is not set.");

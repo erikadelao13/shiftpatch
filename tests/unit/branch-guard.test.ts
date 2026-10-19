@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { assertDevBranch, devOnlyPrismaCommand } from "../../prisma/branch-guard";
+import {
+  assertDevBranch,
+  assertProductionSeed,
+  devOnlyPrismaCommand,
+  isProductionSeed,
+} from "../../prisma/branch-guard";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -37,5 +42,36 @@ describe("devOnlyPrismaCommand", () => {
     expect(devOnlyPrismaCommand(argv("migrate", "deploy"))).toBeNull();
     expect(devOnlyPrismaCommand(argv("migrate", "status"))).toBeNull();
     expect(devOnlyPrismaCommand(argv("db", "seed"))).toBeNull();
+  });
+});
+
+describe("isProductionSeed", () => {
+  it("is true only with the --production flag", () => {
+    expect(isProductionSeed(["node", "seed.ts", "--production"])).toBe(true);
+    expect(isProductionSeed(["node", "seed.ts"])).toBe(false);
+    expect(isProductionSeed(["node", "seed.ts", "--other"])).toBe(false);
+  });
+});
+
+describe("assertProductionSeed", () => {
+  it("allows NODE_ENV and NEON_BRANCH both production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEON_BRANCH", "production");
+
+    expect(() => assertProductionSeed()).not.toThrow();
+  });
+
+  it("refuses dev, an unset branch, and a non-production NODE_ENV", () => {
+    for (const [nodeEnv, branch] of [
+      ["production", "dev"],
+      ["production", ""],
+      ["development", "production"],
+      ["test", "production"],
+    ]) {
+      vi.stubEnv("NODE_ENV", nodeEnv);
+      vi.stubEnv("NEON_BRANCH", branch);
+
+      expect(() => assertProductionSeed()).toThrow(/Refusing to seed production/);
+    }
   });
 });
