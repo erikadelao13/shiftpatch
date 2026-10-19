@@ -14,6 +14,7 @@
     "test": "vitest run",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:production": "NODE_ENV=production tsx prisma/seed.ts --production",
     "db:deploy": "prisma migrate deploy",
     "check:docs": "python3 scripts/check_harness.py",
     "test:e2e": "playwright test",
