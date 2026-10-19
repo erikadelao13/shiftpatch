@@ -33,7 +33,7 @@ Bypass a single run with `git commit --no-verify` / `git push --no-verify` — a
 
 ### What Git hooks do not prove
 
-They inspect the **working tree**, not the snapshot being committed or pushed. A clean `pre-commit` run says nothing about whether a partially staged commit builds. There is no CI, so no check currently runs against the actual committed revision — see [VERIFICATION.md](VERIFICATION.md) and TD-2.
+They inspect the **working tree**, not the snapshot being committed or pushed. A clean `pre-commit` run says nothing about whether a partially staged commit builds. CI is what checks the committed revision, on every push to `main` and every pull request — see [VERIFICATION.md](VERIFICATION.md).
 
 ## Adapter: Claude Code
 

@@ -93,7 +93,7 @@ Checker behavior against deliberately broken fixtures, each restored afterward:
 
 Git hooks: `.githooks/pre-commit` run directly against the broken fixture exited non-zero with the failing path. `core.hooksPath` was unset beforehand and is now `.githooks`; global Git config was not touched.
 
-**Outstanding.** There is no CI, so no check runs against a committed revision. The Codex trust item that stood here is superseded; see the adaptation plan.
+**Outstanding.** None from this section: since 2026-10-18 CI checks every push to `main` and every pull request (see [../completed/2026-10-18-ci-and-vercel-deployment.md](../completed/2026-10-18-ci-and-vercel-deployment.md)). The Codex trust item that stood here is superseded; see the adaptation plan.
 
 The Codex adapter described in the tables above (`.codex/hooks.json`, `scripts/codex_hooks.py`) **no longer exists**. This section is kept as the record of what was verified at the time — completed work is history and does not describe the current tree. For current hook behavior read [../../HOOKS.md](../../HOOKS.md).
 
