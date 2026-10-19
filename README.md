@@ -1,6 +1,18 @@
 # shiftpatch
 
-A [Next.js](https://nextjs.org) 16 application where agencies post nursing shifts and nurses claim them. See [docs/PRODUCT.md](docs/PRODUCT.md). Sign-in is implemented; the shift features are not yet.
+A [Next.js](https://nextjs.org) 16 application where staffing agencies post nursing shifts, nurses with a valid credential claim them, and an administrator sees coverage, the audit log and timesheets. [docs/PRODUCT.md](docs/PRODUCT.md) describes the scope; [docs/ShiftPatch-Technical-Spec.md](docs/ShiftPatch-Technical-Spec.md) holds the required API contracts and test IDs.
+
+**Live app: <https://shiftpatch-tau.vercel.app>.** Every sample account uses the password `Trial2026!`:
+
+| Role | Email | Notes |
+| --- | --- | --- |
+| Agency | `admin@sunrisehealth.example` | Sunrise Health Staffing (`agency-a`) |
+| Agency | `admin@metrocare.example` | Metro Care Partners (`agency-b`) |
+| Nurse | `maria.lopez@example.com` | Credential valid until 2027-01-01 |
+| Nurse | `james.cook@example.com` | Credential expired on 2026-06-01, so his claims are rejected |
+| Admin | `alex.kim@example.com` | Sees both agencies |
+
+More than 10 failed sign-ins for one email within 15 minutes return `429` for that email until the window passes.
 
 Working on this repository with an AI agent? Start at [AGENTS.md](AGENTS.md).
 
@@ -22,7 +34,7 @@ To pull the Neon variables, install the Neon CLI (`npm i -g neon`), run `neon lo
 
 ```sh
 pnpm db:migrate   # prisma migrate dev, dev branch only
-pnpm db:seed      # the spec's agencies and five accounts, dev branch only
+pnpm db:seed      # the spec's sample data, dev branch only
 ```
 
 Both refuse to run unless `NEON_BRANCH=dev`. Run `pnpm db:seed` once before `pnpm test` or `pnpm test:e2e`.
@@ -35,7 +47,7 @@ An install under the wrong Node version used to skip platform-specific native de
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). It redirects to `/login`. The seeded accounts (all use the password `Trial2026!`) are listed in [docs/ShiftPatch-Technical-Spec.md](docs/ShiftPatch-Technical-Spec.md).
+Open [http://localhost:3000](http://localhost:3000). It redirects to `/login`. Sign in with the sample accounts above.
 
 ## Checks
 
@@ -52,6 +64,32 @@ pnpm verify       # all of the above, in order, failing fast
 [docs/VERIFICATION.md](docs/VERIFICATION.md) records what each command actually proves and where coverage stops.
 
 Git hooks live in `.githooks/` and are enabled with `git config --local core.hooksPath .githooks`. See [docs/HOOKS.md](docs/HOOKS.md).
+
+## Continuous integration
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on every push to `main`, every pull request, and on demand, in three jobs:
+
+- **Secret scan:** gitleaks over the full history of every ref. Any finding fails the run.
+- **Checks:** `pnpm check:docs`, the Python harness tests, `pnpm lint`, `pnpm build` and `pnpm typecheck`. The job holds no secrets.
+- **Tests:** `pnpm test` and `pnpm test:e2e` against the Neon `dev` branch, using the repository secrets `DEV_DATABASE_URL` and `DEV_DATABASE_URL_UNPOOLED`. Runs queue so two never share the branch at once. A failure uploads the Playwright report and traces.
+
+CI applies no migrations. Run `pnpm db:migrate` on `dev` before pushing a schema change, or the Tests job fails.
+
+## Deployment
+
+Vercel's Git integration builds pushes to `main` and nothing else ([vercel.json](vercel.json)), and waits for the CI checks before releasing a production deployment. The Production environment holds only `DATABASE_URL` (the pooled `production` URL) and `AUTH_JWT_SECRET`, both stored as secrets.
+
+Only <https://shiftpatch-tau.vercel.app> is public. The project's other Vercel URLs ask for a Vercel login, and `shiftpatch.vercel.app` belongs to an unrelated project.
+
+The production database changes only on purpose, from a machine whose `.env` holds the `production` branch:
+
+```sh
+NODE_ENV=production pnpm exec prisma migrate status   # read-only: lists pending migrations
+NODE_ENV=production pnpm db:deploy                    # applies them
+pnpm db:seed:production                               # reloads the spec's sample data
+```
+
+`pnpm db:seed:production` refuses unless both `NODE_ENV` and `NEON_BRANCH` are `production`. It resets the sample accounts and their passwords, the three seeded shifts and their cancellations, and the two nurses' credentials and documents. Shifts posted later, their cancellations and the audit log are kept.
 
 ## Documentation
 
