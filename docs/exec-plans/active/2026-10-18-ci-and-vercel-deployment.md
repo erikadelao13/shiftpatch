@@ -162,9 +162,9 @@ Work on a branch, `chore/ci-and-deploy`, and commit by context (the `contextual-
 - [x] `playwright.config.ts`: in CI, use the reporters `[["github"], ["html", { open: "never" }]]` so a failure leaves a report to upload. Local behaviour is unchanged.
 - [x] `scripts/harness.json`: add `.github/workflows/ci.yml` to `required`.
 - [x] Local CI simulation: `git archive HEAD` into the scratchpad, which leaves out all `.env*` files. Then `pnpm install --frozen-lockfile`, `pnpm build` and `pnpm typecheck` there. Say what gets deleted before removing the scratch copy.
-- [ ] ⏸ Owner installs and authenticates `gh`: `brew install gh`, `! gh auth login`, `! gh auth setup-git`. Then set the two repository secrets from `.env.development` over stdin (`gh secret set DEV_DATABASE_URL --repo erikadelao13/shiftpatch`). Never print, echo or pass a value as an argument.
-- [ ] ⏸ Enable secret scanning and push protection: `gh api -X PATCH repos/erikadelao13/shiftpatch` with the `security_and_analysis` fields, or the owner does it on the settings page. Confirm with `gh api repos/erikadelao13/shiftpatch --jq .security_and_analysis`.
-- [ ] ⏸ Push the branch and open a pull request. The `pre-push` hook runs `pnpm verify`. Watch the PR's CI run until all three jobs finish, and record the run URL, the counts and any flaky tests.
+- [x] ⏸ Owner installs and authenticates `gh`: `brew install gh`, `! gh auth login`, `! gh auth setup-git`. Then set the two repository secrets from `.env.development` over stdin (`gh secret set DEV_DATABASE_URL --repo erikadelao13/shiftpatch`). Never print, echo or pass a value as an argument.
+- [x] ⏸ Enable secret scanning and push protection: `gh api -X PATCH repos/erikadelao13/shiftpatch` with the `security_and_analysis` fields, or the owner does it on the settings page. Confirm with `gh api repos/erikadelao13/shiftpatch --jq .security_and_analysis`.
+- [x] ⏸ Push the branch and open a pull request. The `pre-push` hook runs `pnpm verify`. Watch the PR's CI run until all three jobs finish, and record the run URL, the counts and any flaky tests.
 
 **Phase B: Deployment**
 
@@ -255,8 +255,17 @@ Phase A, local, 2026-10-18 on branch `chore/ci-and-deploy`:
 | Clean export of tracked files (only `.env.example` present): `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm typecheck` | all passed |
 | `pnpm check:docs`, `pnpm lint`, `tsc --noEmit` | passed |
 
-Outstanding: every unticked acceptance criterion.
+Phase A, GitHub, 2026-10-18:
+
+| Check | Result |
+| --- | --- |
+| `gh` 2.102.0, token scopes `gist`, `read:org`, `repo`, `workflow`; secrets `DEV_DATABASE_URL` and `DEV_DATABASE_URL_UNPOOLED` set by the owner over stdin | `gh secret list` shows both |
+| Secret scanning and push protection | `gh api repos/erikadelao13/shiftpatch --jq .security_and_analysis` shows both `enabled` |
+| `git push` of `chore/ci-and-deploy` | `pre-push` ran `pnpm verify`; "110 passed (1.2m)"; pushed |
+| First CI run on PR #1, https://github.com/erikadelao13/shiftpatch/actions/runs/39178690222 | `Secret scan` pass (6 s), `Checks` pass (1m23s), `Tests` pass (2m19s). Vitest 23 files, 217 passed; Playwright 110 passed. No flaky tests reported. |
+
+Outstanding: Phase A acceptance items still to confirm (secret scan of the first CI log, final history re-scan), and all of Phase B.
 
 ## Handoff or outcome
 
-**Next action:** Phase A checkpoint ⏸: owner installs and authenticates `gh` (`brew install gh`, `! gh auth login`, `! gh auth setup-git`), then the two repository secrets are set over stdin. The workflow, reporter change, harness entry and local simulation are done and committed on `chore/ci-and-deploy`; nothing is pushed.
+**Next action:** Phase B, first step: the production seed override (`pnpm db:seed:production`) with unit tests, on `chore/ci-and-deploy` (PR #1 is open and green; do not merge yet). Then `vercel.json` and `engines.node`.
