@@ -34,7 +34,7 @@ Both a database enum and a zod enum; any other role gets `400`. Adding a role ta
 - **Vercel's Git integration deploys `main` only, with no preview deployments.** Deployment Checks hold the production promotion until CI passes. Neon preview branches and deploying from GitHub Actions were rejected for now.
 - **Secrets reach GitHub and Vercel only over stdin**, piped by `gh` and the Vercel CLI from the local env files. They never appear in a command, in output, or in the repository. The production `AUTH_JWT_SECRET` is generated straight into Vercel.
 
-See [exec-plans/active/2026-10-18-ci-and-vercel-deployment.md](exec-plans/active/2026-10-18-ci-and-vercel-deployment.md).
+See [exec-plans/completed/2026-10-18-ci-and-vercel-deployment.md](exec-plans/completed/2026-10-18-ci-and-vercel-deployment.md).
 
 ## Agent defaults
 

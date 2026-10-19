@@ -1,6 +1,6 @@
 # CI and Vercel deployment
 
-Status: Active
+Status: Completed (closed by the owner on 2026-10-18 with open items, see Handoff or outcome)
 Owner: Erika De LA O (decisions) / agent (implementation)
 Created: 2026-10-18
 
@@ -290,3 +290,5 @@ Outstanding: Phase A acceptance items still to confirm (secret scan of the first
 ## Handoff or outcome
 
 **Next action:** Phase B ⏸ owner, in the Vercel dashboard: automatic aliasing on, and Deployment Checks requiring `Secret scan`, `Checks` and `Tests`. Then push `chore/ci-and-deploy` and confirm it creates no Vercel deployment. The project is created, linked and Git-connected, and both Production variables are set. PR #1 is merged. The seed override (`94158c4`), `vercel.json` and `engines.node` (`ebb721e`) and the progress notes (`308e7f7`) are committed on `chore/ci-and-deploy`, not yet pushed. `pnpm test` and `pnpm test:e2e` for the `prisma/` change run in the pre-push hook. The production database is migrated and seeded.
+
+**Closed by the owner, 2026-10-18.** The owner asked for this plan to be moved to `completed/` and pushed. Not every acceptance box above is ticked, and no agent verified the remaining ones when it was closed: the dashboard Deployment Checks and automatic aliasing, the merge-to-`main` watch (CI, Vercel build log, promotion), the smoke checks on the public URL, the documentation updates, the final history re-scan, and a final `pnpm verify` on the closing tree. Treat those as unconfirmed, not passed.
