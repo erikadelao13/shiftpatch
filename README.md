@@ -6,7 +6,7 @@ Working on this repository with an AI agent? Start at [AGENTS.md](AGENTS.md).
 
 ## Prerequisites
 
-- **Node.js >= 20.9.0.** Pinned in `.nvmrc`; run `nvm use` (or the equivalent) before anything else. Next.js 16 refuses to run on Node 18, and `.npmrc` sets `engine-strict=true` so `pnpm` refuses up front. The Git hooks and Claude Code sessions pick the pinned version up from nvm automatically.
+- **Node.js 24.x.** Pinned in `.nvmrc` and `engines`; run `nvm use` (or the equivalent) before anything else. Next.js 16 refuses to run on Node 18, and `.npmrc` sets `engine-strict=true` so `pnpm` refuses up front. The Git hooks and Claude Code sessions pick the pinned version up from nvm automatically.
 - **pnpm 10.27.0** — `corepack enable` picks up the pinned `packageManager`.
 - **Python 3.9+** as `python3`, for the documentation check.
 
