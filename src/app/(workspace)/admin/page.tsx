@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
-import { requireRole } from "@/features/auth/server/current-user";
+import { requireRole } from "@/server/auth/current-user";
 import { AdminShiftOverview } from "@/features/shifts/components/admin-shift-overview";
-import { getAdminBoard, listAgencies } from "@/features/shifts/server/shift-service";
+import { getAdminBoard, listAgencies } from "@/server/shifts/shift-service";
 
 export default function AdminPage() {
   return (

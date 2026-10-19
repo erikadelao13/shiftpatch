@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { SESSION_COOKIE } from "@/features/auth/constants";
-import { verifyToken } from "@/features/auth/server/token";
-import { WORKSPACE_PATHS, workspacePathFor } from "@/features/auth/workspace";
+import { SESSION_COOKIE } from "@/server/auth/constants";
+import { verifyToken } from "@/server/auth/token";
+import { WORKSPACE_PATHS, workspacePathFor } from "@/contracts/auth/workspace";
 
 // Optimistic redirects from the cookie signature only. `/login` is deliberately
 // not handled: a revoked session with a valid signature would loop.

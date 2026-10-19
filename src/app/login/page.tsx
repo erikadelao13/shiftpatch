@@ -6,7 +6,7 @@ import { LoginForm } from "@/features/auth/components/login-form";
 import {
   getOptionalUser,
   workspacePathFor,
-} from "@/features/auth/server/current-user";
+} from "@/server/auth/current-user";
 import { Logo } from "@/shared/ui/logo";
 
 export const metadata: Metadata = {

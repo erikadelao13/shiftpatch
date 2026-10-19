@@ -1,5 +1,5 @@
-import type { Role } from "@/features/auth/types";
-import type { CancellationReason, ShiftRole } from "@/features/shifts/types";
+import type { Role } from "@/contracts/auth/types";
+import type { CancellationReason, ShiftRole } from "@/contracts/shifts/types";
 
 export type AuditPerson = { id: string; name: string };
 

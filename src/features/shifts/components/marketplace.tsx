@@ -3,13 +3,13 @@
 import { useState } from "react";
 
 import { CredentialBanner } from "@/features/credentials/components/credential-banner";
-import type { CredentialStatus } from "@/features/credentials/status";
+import type { CredentialStatus } from "@/contracts/credentials/status";
 import { apiFetch } from "@/shared/client/api-client";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
-import { formatDate } from "../schedule";
-import { useServerRefresh } from "../use-server-refresh";
-import { SHIFT_ROLES, type MarketplaceShift, type ShiftDTO } from "../types";
+import { formatDate } from "@/contracts/shifts/schedule";
+import { useServerRefresh } from "@/shared/client/use-server-refresh";
+import { SHIFT_ROLES, type MarketplaceShift, type ShiftDTO } from "@/contracts/shifts/types";
 import { ALL, FilterSelect } from "./filter-select";
 import { MyShiftsTable } from "./my-shifts-table";
 import { OpenShiftsTable } from "./open-shifts-table";

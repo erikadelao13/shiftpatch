@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { pingDatabase } from "@/shared/server/db";
+import { pingDatabase } from "@/server/db";
 
 const noStore = { "Cache-Control": "no-store" };
 

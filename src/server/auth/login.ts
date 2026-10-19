@@ -1,15 +1,15 @@
 import "server-only";
 
-import { getPrisma } from "@/shared/server/db";
-import { HttpError } from "@/shared/server/errors";
+import { getPrisma } from "@/server/db";
+import { HttpError } from "@/server/errors";
 
 import {
   INVALID_CREDENTIALS_MESSAGE,
   LOGIN_FAILURE_LIMIT,
   LOGIN_FAILURE_WINDOW_MS,
-} from "../constants";
-import type { LoginInput } from "../schemas";
-import type { PublicUser } from "../types";
+} from "./constants";
+import type { LoginInput } from "@/contracts/auth/schemas";
+import type { PublicUser } from "@/contracts/auth/types";
 import { verifyAgainstDummy, verifyPassword } from "./password";
 import { createSession } from "./sessions";
 import { signToken } from "./token";

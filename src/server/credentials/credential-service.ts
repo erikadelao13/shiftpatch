@@ -1,14 +1,14 @@
 import "server-only";
 
-import type { Actor } from "@/features/auth/types";
-import { recordAuditEvent } from "@/features/audit/server/audit-service";
+import type { Actor } from "@/contracts/auth/types";
+import { recordAuditEvent } from "@/server/audit/audit-service";
 import type { Prisma } from "@/generated/prisma/client";
-import { getPrisma } from "@/shared/server/db";
-import { HttpError } from "@/shared/server/errors";
+import { getPrisma } from "@/server/db";
+import { HttpError } from "@/server/errors";
 
-import { DOCUMENT_MIME_TYPES, PAST_EXPIRY_MESSAGE, cleanFileName, detectDocumentType } from "../document";
-import { getCredentialStatus, todayIsoDate } from "../status";
-import type { CredentialDocumentSummary, CredentialDTO, CredentialRecord } from "../types";
+import { DOCUMENT_MIME_TYPES, PAST_EXPIRY_MESSAGE, cleanFileName, detectDocumentType } from "@/contracts/credentials/document";
+import { getCredentialStatus, todayIsoDate } from "@/contracts/credentials/status";
+import type { CredentialDocumentSummary, CredentialDTO, CredentialRecord } from "@/contracts/credentials/types";
 
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
 

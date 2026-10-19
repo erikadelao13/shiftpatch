@@ -3,17 +3,17 @@
 import { useLayoutEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { z } from "zod";
 
-import { formatDate } from "@/features/shifts/schedule";
-import { useServerRefresh } from "@/features/shifts/use-server-refresh";
+import { formatDate } from "@/contracts/shifts/schedule";
+import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { apiFetch } from "@/shared/client/api-client";
 import { DocumentIcon, LockIcon, UploadIcon } from "@/shared/ui/icons";
 
-import { PAST_EXPIRY_MESSAGE, formatFileSize } from "../document";
+import { PAST_EXPIRY_MESSAGE, formatFileSize } from "@/contracts/credentials/document";
 import {
   credentialFileSchema,
   credentialUploadSchema,
   type CredentialUploadErrors,
-} from "../schemas";
+} from "@/contracts/credentials/schemas";
 
 type Notice = { kind: "success" | "error"; message: string };
 

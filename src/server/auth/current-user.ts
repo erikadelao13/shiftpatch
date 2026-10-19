@@ -4,12 +4,12 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { SESSION_COOKIE } from "../constants";
-import type { Actor } from "../types";
+import { SESSION_COOKIE } from "./constants";
+import type { Actor } from "@/contracts/auth/types";
 import { resolveSession } from "./sessions";
 import { verifyToken } from "./token";
 
-import { workspacePathFor } from "../workspace";
+import { workspacePathFor } from "@/contracts/auth/workspace";
 
 export { workspacePathFor };
 

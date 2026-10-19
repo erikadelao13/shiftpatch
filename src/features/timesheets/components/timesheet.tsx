@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import type { Role } from "@/features/auth/types";
+import type { Role } from "@/contracts/auth/types";
 import { StatCard } from "@/features/shifts/components/stat-card";
-import { useServerRefresh } from "@/features/shifts/use-server-refresh";
+import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { ClockIcon, RefreshIcon } from "@/shared/ui/icons";
 
-import { formatHours, timesheetTotals } from "../hours";
-import type { TimesheetEntry } from "../types";
+import { formatHours, timesheetTotals } from "@/contracts/timesheets/hours";
+import type { TimesheetEntry } from "@/contracts/timesheets/types";
 import { TimesheetTable } from "./timesheet-table";
 
 function assignedShiftCount(count: number): string {

@@ -1,9 +1,9 @@
 import "server-only";
 
 import type { AuditAction, Prisma } from "@/generated/prisma/client";
-import { getPrisma } from "@/shared/server/db";
+import { getPrisma } from "@/server/db";
 
-import type { AuditEntry } from "../types";
+import type { AuditEntry } from "@/contracts/audit/types";
 import { previousNurseIds, toAuditEntry, type AuditRow } from "./audit-presenter";
 
 export type AuditEventInput = {

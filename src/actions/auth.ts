@@ -3,14 +3,13 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { HttpError } from "@/shared/server/errors";
-
-import { SESSION_COOKIE, SESSION_TTL_SECONDS } from "./constants";
-import { loginSchema } from "./schemas";
-import { authenticate } from "./server/login";
-import { revokeSession } from "./server/sessions";
-import { verifyToken } from "./server/token";
-import { workspacePathFor } from "./workspace";
+import { loginSchema } from "@/contracts/auth/schemas";
+import { workspacePathFor } from "@/contracts/auth/workspace";
+import { SESSION_COOKIE, SESSION_TTL_SECONDS } from "@/server/auth/constants";
+import { authenticate } from "@/server/auth/login";
+import { revokeSession } from "@/server/auth/sessions";
+import { verifyToken } from "@/server/auth/token";
+import { HttpError } from "@/server/errors";
 
 export type SignInState = {
   email: string;

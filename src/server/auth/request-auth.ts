@@ -1,9 +1,9 @@
 import "server-only";
 
-import { HttpError } from "@/shared/server/errors";
+import { HttpError } from "@/server/errors";
 
-import { SESSION_COOKIE } from "../constants";
-import type { Actor } from "../types";
+import { SESSION_COOKIE } from "./constants";
+import type { Actor } from "@/contracts/auth/types";
 import { resolveSession } from "./sessions";
 import { verifyToken } from "./token";
 

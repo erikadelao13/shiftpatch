@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { CloseIcon, InfoIcon } from "@/shared/ui/icons";
 
-import { formatDate, formatTimeRange } from "../schedule";
-import { CANCELLATION_REASONS, type AgencyShift, type CancellationReason } from "../types";
+import { formatDate, formatTimeRange } from "@/contracts/shifts/schedule";
+import { CANCELLATION_REASONS, type AgencyShift, type CancellationReason } from "@/contracts/shifts/types";
 
 export type ReopenMode = "nurse" | "agency";
 

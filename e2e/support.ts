@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 
 import { Pool } from "pg";
 
-import { hashPassword } from "../src/features/auth/server/password";
+import { hashPassword } from "../src/server/auth/password";
 import { assertDevBranch } from "../prisma/branch-guard";
 
 // Playwright's own process doesn't load Next's env files. The dev server it

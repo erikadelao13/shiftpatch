@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { CloseIcon } from "@/shared/ui/icons";
 
-import { newShiftSchema, toFieldErrors, type NewShiftErrors, type NewShiftInput } from "../schemas";
-import { SHIFT_ROLES } from "../types";
+import { newShiftSchema, toFieldErrors, type NewShiftErrors, type NewShiftInput } from "@/contracts/shifts/schemas";
+import { SHIFT_ROLES } from "@/contracts/shifts/types";
 
 type PostShiftDialogProps = {
   open: boolean;

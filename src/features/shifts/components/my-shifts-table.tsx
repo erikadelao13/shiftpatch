@@ -1,5 +1,5 @@
-import { formatDate, formatEndsOn } from "../schedule";
-import type { MarketplaceShift } from "../types";
+import { formatDate, formatEndsOn } from "@/contracts/shifts/schedule";
+import type { MarketplaceShift } from "@/contracts/shifts/types";
 
 type MyShiftsTableProps = {
   shifts: readonly MarketplaceShift[];

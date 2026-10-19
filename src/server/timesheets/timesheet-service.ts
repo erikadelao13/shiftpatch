@@ -1,9 +1,9 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
-import { getPrisma } from "@/shared/server/db";
+import { getPrisma } from "@/server/db";
 
-import type { TimesheetEntry } from "../types";
+import type { TimesheetEntry } from "@/contracts/timesheets/types";
 import {
   toTimesheetEntries,
   type AssignmentRow,

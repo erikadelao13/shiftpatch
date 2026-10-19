@@ -1,7 +1,7 @@
-import { loginSchema } from "@/features/auth/schemas";
-import { authenticate } from "@/features/auth/server/login";
-import { errorResponse } from "@/shared/server/errors";
-import { readJson } from "@/shared/server/http";
+import { loginSchema } from "@/contracts/auth/schemas";
+import { authenticate } from "@/server/auth/login";
+import { errorResponse } from "@/server/errors";
+import { readJson } from "@/server/http";
 
 export async function POST(request: Request) {
   try {

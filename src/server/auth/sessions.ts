@@ -1,8 +1,8 @@
 import "server-only";
 
-import { getPrisma } from "@/shared/server/db";
+import { getPrisma } from "@/server/db";
 
-import type { Actor } from "../types";
+import type { Actor } from "@/contracts/auth/types";
 import { newSessionExpiry, type TokenClaims } from "./token";
 
 export async function createSession(

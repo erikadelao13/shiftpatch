@@ -1,5 +1,5 @@
-import { formatDate, formatTimeRange } from "../schedule";
-import type { AgencyShift } from "../types";
+import { formatDate, formatTimeRange } from "@/contracts/shifts/schedule";
+import type { AgencyShift } from "@/contracts/shifts/types";
 import { AssignedNurse } from "./assigned-nurse";
 import { StatusBadge } from "./status-badge";
 

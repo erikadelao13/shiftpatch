@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { fixtureShifts } from "../../prisma/fixtures";
-import type { Actor } from "@/features/auth/types";
+import type { Actor } from "@/contracts/auth/types";
 import {
   createShift,
   getAdminBoard,
@@ -11,8 +11,8 @@ import {
   listAgencies,
   listAgencyShifts,
   listShifts,
-} from "@/features/shifts/server/shift-service";
-import { getDb, getPrisma } from "@/shared/server/db";
+} from "@/server/shifts/shift-service";
+import { getDb, getPrisma } from "@/server/db";
 
 import { expectHttpError } from "./support";
 

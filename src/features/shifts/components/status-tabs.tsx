@@ -1,6 +1,6 @@
 import type { KeyboardEvent } from "react";
 
-import type { ShiftStatus } from "../types";
+import type { ShiftStatus } from "@/contracts/shifts/types";
 
 export type TabKey = "all" | ShiftStatus;
 

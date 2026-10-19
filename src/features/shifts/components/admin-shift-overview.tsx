@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 
 import { RefreshIcon, ShieldCheckIcon } from "@/shared/ui/icons";
 
-import { summarize } from "../schedule";
-import { useServerRefresh } from "../use-server-refresh";
-import type { AdminShift, AgencyOption } from "../types";
+import { summarize } from "@/contracts/shifts/schedule";
+import { useServerRefresh } from "@/shared/client/use-server-refresh";
+import type { AdminShift, AgencyOption } from "@/contracts/shifts/types";
 import { AdminShiftsTable } from "./admin-shifts-table";
 import { ALL, FilterSelect } from "./filter-select";
 import { StatusTabs, type StatusTab, type TabKey } from "./status-tabs";

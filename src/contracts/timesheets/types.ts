@@ -1,4 +1,4 @@
-import type { ShiftRole } from "@/features/shifts/types";
+import type { ShiftRole } from "@/contracts/shifts/types";
 
 export type TimesheetEntryState = "assigned" | "cancelled" | "no-show";
 

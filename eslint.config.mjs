@@ -2,9 +2,50 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+const forbid = (name, message) => ({
+  group: [`@/${name}`, `@/${name}/**`],
+  message,
+});
+
+const forbidRelative = (names, message) => ({
+  regex: `^\\.{1,2}/(.*/)?(${names.join("|")})(/|$)`,
+  message,
+});
+
+const boundary = (files, patterns, paths = []) => ({
+  files,
+  rules: { "no-restricted-imports": ["error", { paths, patterns }] },
+});
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  boundary(
+    ["src/features/**", "src/shared/**"],
+    [
+      forbid("server", "Frontend code cannot import @/server. Call a Server Action or an API route."),
+      forbidRelative(["server"], "Frontend code cannot import server code."),
+    ],
+  ),
+  boundary(
+    ["src/contracts/**"],
+    [
+      forbid("server", "Contracts are shared with the frontend and cannot import @/server."),
+      forbid("features", "Contracts cannot import @/features."),
+      forbid("actions", "Contracts cannot import @/actions."),
+      forbid("shared", "Contracts cannot import @/shared."),
+      forbidRelative(["server", "features", "actions", "shared"], "Contracts import only other contracts."),
+    ],
+    [{ name: "server-only", message: "Contracts are shared with the frontend and cannot be server-only." }],
+  ),
+  boundary(
+    ["src/server/**"],
+    [
+      forbid("features", "Server code cannot import @/features."),
+      forbid("actions", "Server code cannot import @/actions."),
+      forbidRelative(["features", "actions"], "Server code cannot import frontend code or actions."),
+    ],
+  ),
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

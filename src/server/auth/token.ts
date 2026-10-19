@@ -4,8 +4,8 @@ import {
   SESSION_TTL_SECONDS,
   TOKEN_AUDIENCE,
   TOKEN_ISSUER,
-} from "../constants";
-import { ROLES, type Role } from "../types";
+} from "./constants";
+import { ROLES, type Role } from "@/contracts/auth/types";
 
 // No Prisma and no `server-only`: the proxy imports this file.
 export type TokenClaims = {

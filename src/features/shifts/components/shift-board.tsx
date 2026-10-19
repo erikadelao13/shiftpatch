@@ -6,10 +6,10 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { apiFetch } from "@/shared/client/api-client";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
-import { formatDate, summarize } from "../schedule";
-import type { NewShiftInput } from "../schemas";
-import { useServerRefresh } from "../use-server-refresh";
-import type { AgencyShift, CancellationReason, ShiftDTO } from "../types";
+import { formatDate, summarize } from "@/contracts/shifts/schedule";
+import type { NewShiftInput } from "@/contracts/shifts/schemas";
+import { useServerRefresh } from "@/shared/client/use-server-refresh";
+import type { AgencyShift, CancellationReason, ShiftDTO } from "@/contracts/shifts/types";
 import { PostShiftDialog } from "./post-shift-dialog";
 import { ReopenShiftDialog, type ReopenTarget } from "./reopen-shift-dialog";
 import { ShiftsTable } from "./shifts-table";

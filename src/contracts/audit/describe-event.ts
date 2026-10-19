@@ -1,4 +1,4 @@
-import { formatDate } from "@/features/shifts/schedule";
+import { formatDate } from "@/contracts/shifts/schedule";
 
 import type { AuditEntry } from "./types";
 

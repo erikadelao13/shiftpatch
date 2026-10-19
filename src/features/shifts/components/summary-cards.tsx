@@ -1,4 +1,4 @@
-import type { ShiftSummary } from "../schedule";
+import type { ShiftSummary } from "@/contracts/shifts/schedule";
 import { StatCard } from "./stat-card";
 
 type SummaryCardsProps = {

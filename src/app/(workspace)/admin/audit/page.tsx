@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
 import { AuditLog } from "@/features/audit/components/audit-log";
-import { listAuditEntries } from "@/features/audit/server/audit-service";
-import { requireRole } from "@/features/auth/server/current-user";
+import { listAuditEntries } from "@/server/audit/audit-service";
+import { requireRole } from "@/server/auth/current-user";
 
 export default function AuditPage() {
   return (

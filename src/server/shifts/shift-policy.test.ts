@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Actor } from "@/features/auth/types";
+import type { Actor } from "@/contracts/auth/types";
 
 import {
   canClaimShift,

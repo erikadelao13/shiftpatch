@@ -2,7 +2,7 @@ import "server-only";
 
 import type { CancellationReason as DbCancellationReason } from "@/generated/prisma/client";
 
-import type { CancellationReason, CancelledShiftDTO, ShiftDTO, ShiftRole, ShiftStatus } from "../types";
+import type { CancellationReason, CancelledShiftDTO, ShiftDTO, ShiftRole, ShiftStatus } from "@/contracts/shifts/types";
 
 export type ShiftRow = {
   id: string;

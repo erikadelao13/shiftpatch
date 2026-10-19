@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 
-import { requireRole } from "@/features/auth/server/current-user";
+import { requireRole } from "@/server/auth/current-user";
 import { CredentialBanner } from "@/features/credentials/components/credential-banner";
 import { CredentialUploadForm } from "@/features/credentials/components/credential-upload-form";
 import { CurrentCredential } from "@/features/credentials/components/current-credential";
-import { getCredentialRecord } from "@/features/credentials/server/credential-service";
-import { getCredentialStatus, todayIsoDate } from "@/features/credentials/status";
+import { getCredentialRecord } from "@/server/credentials/credential-service";
+import { getCredentialStatus, todayIsoDate } from "@/contracts/credentials/status";
 
 export default function CredentialsPage() {
   return (

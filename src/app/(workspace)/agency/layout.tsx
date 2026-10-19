@@ -1,8 +1,8 @@
 import { Suspense, type ReactNode } from "react";
 
-import { signOut } from "@/features/auth/actions";
-import { requireRole } from "@/features/auth/server/current-user";
-import { getAgencyName } from "@/features/shifts/server/shift-service";
+import { signOut } from "@/actions/auth";
+import { requireRole } from "@/server/auth/current-user";
+import { getAgencyName } from "@/server/shifts/shift-service";
 import { HomeIcon, NoteIcon } from "@/shared/ui/icons";
 import { Sidebar } from "@/shared/ui/sidebar";
 import { SidebarNav } from "@/shared/ui/sidebar-nav";

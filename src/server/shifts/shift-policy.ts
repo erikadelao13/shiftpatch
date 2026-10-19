@@ -1,9 +1,9 @@
 import "server-only";
 
-import type { Actor } from "@/features/auth/types";
-import type { CredentialStatus } from "@/features/credentials/status";
+import type { Actor } from "@/contracts/auth/types";
+import type { CredentialStatus } from "@/contracts/credentials/status";
 
-import type { ShiftStatus } from "../types";
+import type { ShiftStatus } from "@/contracts/shifts/types";
 
 export function canPostShift(actor: Actor): boolean {
   return actor.role === "agency" && actor.agencyId !== null;

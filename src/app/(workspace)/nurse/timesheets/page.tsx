@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
-import { requireRole } from "@/features/auth/server/current-user";
+import { requireRole } from "@/server/auth/current-user";
 import { Timesheet } from "@/features/timesheets/components/timesheet";
-import { listTimesheetEntries } from "@/features/timesheets/server/timesheet-service";
+import { listTimesheetEntries } from "@/server/timesheets/timesheet-service";
 
 export default function TimesheetsPage() {
   return (

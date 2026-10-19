@@ -1,9 +1,9 @@
 import "server-only";
 
 import type { CancellationReason as DbCancellationReason } from "@/generated/prisma/client";
-import type { ShiftRole } from "@/features/shifts/types";
+import type { ShiftRole } from "@/contracts/shifts/types";
 
-import type { TimesheetEntry, TimesheetEntryState } from "../types";
+import type { TimesheetEntry, TimesheetEntryState } from "@/contracts/timesheets/types";
 
 type ShiftFields = {
   id: string;

@@ -3,14 +3,14 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { cache } from "react";
 
-import { recordAuditEvent } from "@/features/audit/server/audit-service";
-import type { Actor } from "@/features/auth/types";
-import { getCredentialStatus, todayIsoDate } from "@/features/credentials/status";
-import { getCredentialExpiry } from "@/features/credentials/server/credential-service";
-import { HttpError } from "@/shared/server/errors";
-import { getPrisma } from "@/shared/server/db";
+import { recordAuditEvent } from "@/server/audit/audit-service";
+import type { Actor } from "@/contracts/auth/types";
+import { getCredentialStatus, todayIsoDate } from "@/contracts/credentials/status";
+import { getCredentialExpiry } from "@/server/credentials/credential-service";
+import { HttpError } from "@/server/errors";
+import { getPrisma } from "@/server/db";
 
-import type { NewShiftInput } from "../schemas";
+import type { NewShiftInput } from "@/contracts/shifts/schemas";
 import type {
   AdminShift,
   AgencyOption,
@@ -20,7 +20,7 @@ import type {
   MarketplaceShift,
   NurseMarketplace,
   ShiftDTO,
-} from "../types";
+} from "@/contracts/shifts/types";
 import {
   canClaimShift,
   canPostShift,

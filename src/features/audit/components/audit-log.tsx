@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { useServerRefresh } from "@/features/shifts/use-server-refresh";
+import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { ClockIcon, LockIcon, RefreshIcon } from "@/shared/ui/icons";
 
-import type { AuditEntry } from "../types";
+import type { AuditEntry } from "@/contracts/audit/types";
 import { AuditLogTable } from "./audit-log-table";
 
 function eventCount(count: number): string {

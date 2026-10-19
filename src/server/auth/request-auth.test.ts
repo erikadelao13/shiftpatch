@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HttpError } from "@/shared/server/errors";
+import { HttpError } from "@/server/errors";
 
-import { SESSION_COOKIE } from "../constants";
-import type { Actor } from "../types";
+import { SESSION_COOKIE } from "./constants";
+import type { Actor } from "@/contracts/auth/types";
 import { requireActor, requireSession } from "./request-auth";
 import { resolveSession } from "./sessions";
 import { signToken } from "./token";

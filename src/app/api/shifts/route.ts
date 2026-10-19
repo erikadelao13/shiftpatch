@@ -1,8 +1,8 @@
-import { requireActor } from "@/features/auth/server/request-auth";
-import { newShiftSchema } from "@/features/shifts/schemas";
-import { createShift, listShifts } from "@/features/shifts/server/shift-service";
-import { errorResponse } from "@/shared/server/errors";
-import { readJson } from "@/shared/server/http";
+import { requireActor } from "@/server/auth/request-auth";
+import { newShiftSchema } from "@/contracts/shifts/schemas";
+import { createShift, listShifts } from "@/server/shifts/shift-service";
+import { errorResponse } from "@/server/errors";
+import { readJson } from "@/server/http";
 
 const noStore = { "Cache-Control": "no-store" };
 

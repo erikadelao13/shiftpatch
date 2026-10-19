@@ -1,4 +1,4 @@
-import { durationHours } from "@/features/shifts/schedule";
+import { durationHours } from "@/contracts/shifts/schedule";
 
 import type { TimesheetEntry } from "./types";
 

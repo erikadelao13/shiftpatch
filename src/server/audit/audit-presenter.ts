@@ -3,10 +3,10 @@ import "server-only";
 import { z } from "zod";
 
 import type { AuditAction } from "@/generated/prisma/client";
-import type { Role } from "@/features/auth/types";
-import { CANCELLATION_REASONS, SHIFT_ROLES } from "@/features/shifts/types";
+import type { Role } from "@/contracts/auth/types";
+import { CANCELLATION_REASONS, SHIFT_ROLES } from "@/contracts/shifts/types";
 
-import type { AuditEntry } from "../types";
+import type { AuditEntry } from "@/contracts/audit/types";
 
 export type AuditRow = {
   id: string;
