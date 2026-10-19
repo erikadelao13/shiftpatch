@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 
-import { requireRole } from "@/features/auth/server/current-user";
-import { ShiftBoard } from "@/features/shifts/components/shift-board";
-import { getAgencyBoard, getAgencyName } from "@/features/shifts/server/shift-service";
+import { requireRole } from "@/server/auth/current-user";
+import { ShiftBoard } from "@/features/shifts/views/shift-board";
+import { getAgencyBoard, getAgencyName } from "@/server/shifts/shift-service";
 
 export default function AgencyPage() {
   return (

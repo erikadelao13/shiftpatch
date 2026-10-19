@@ -1,8 +1,8 @@
-import { requireActor } from "@/features/auth/server/request-auth";
-import { MAX_CREDENTIAL_BYTES, credentialUploadSchema } from "@/features/credentials/schemas";
-import { saveCredential } from "@/features/credentials/server/credential-service";
-import { HttpError, errorResponse } from "@/shared/server/errors";
-import { assertContentLength, readFormData } from "@/shared/server/http";
+import { requireActor } from "@/server/auth/request-auth";
+import { MAX_CREDENTIAL_BYTES, credentialUploadSchema } from "@/contracts/credentials/schemas";
+import { saveCredential } from "@/server/credentials/credential-service";
+import { HttpError, errorResponse } from "@/server/errors";
+import { assertContentLength, readFormData } from "@/server/http";
 
 const noStore = { "Cache-Control": "no-store" };
 const MULTIPART_OVERHEAD_BYTES = 64 * 1024;

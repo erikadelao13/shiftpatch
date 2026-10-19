@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import {
   getCurrentUser,
   workspacePathFor,
-} from "@/features/auth/server/current-user";
+} from "@/server/auth/current-user";
 
 // The proxy normally redirects `/` first; this is the authoritative fallback.
 export default function Home() {

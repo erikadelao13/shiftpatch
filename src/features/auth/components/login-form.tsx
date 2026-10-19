@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { signIn, type SignInState } from "../actions";
+import { signIn, type SignInState } from "@/actions/auth";
 
 const initialState: SignInState = { email: "" };
 

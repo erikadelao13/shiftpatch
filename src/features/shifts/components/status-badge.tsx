@@ -1,4 +1,4 @@
-import type { ShiftStatus } from "../types";
+import type { ShiftStatus } from "@/contracts/shifts/types";
 
 const BADGES: Record<ShiftStatus, { label: string; className: string; dot: string }> = {
   open: {

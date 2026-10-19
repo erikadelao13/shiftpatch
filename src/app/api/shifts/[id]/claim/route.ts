@@ -1,6 +1,6 @@
-import { requireActor } from "@/features/auth/server/request-auth";
-import { claimShift } from "@/features/shifts/server/shift-service";
-import { errorResponse } from "@/shared/server/errors";
+import { requireActor } from "@/server/auth/request-auth";
+import { claimShift } from "@/server/shifts/shift-service";
+import { errorResponse } from "@/server/errors";
 
 const noStore = { "Cache-Control": "no-store" };
 

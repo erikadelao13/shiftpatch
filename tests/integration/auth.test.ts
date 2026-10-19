@@ -6,14 +6,14 @@ import { fixtureUsers, FIXTURE_PASSWORD } from "../../prisma/fixtures";
 import {
   INVALID_CREDENTIALS_MESSAGE,
   LOGIN_FAILURE_LIMIT,
-} from "@/features/auth/constants";
-import { loginSchema } from "@/features/auth/schemas";
-import { authenticate } from "@/features/auth/server/login";
-import { hashPassword } from "@/features/auth/server/password";
-import { resolveSession, revokeSession } from "@/features/auth/server/sessions";
-import { verifyToken } from "@/features/auth/server/token";
-import { getDb, getPrisma } from "@/shared/server/db";
-import { HttpError } from "@/shared/server/errors";
+} from "@/server/auth/constants";
+import { loginSchema } from "@/contracts/auth/schemas";
+import { authenticate } from "@/server/auth/login";
+import { hashPassword } from "@/server/auth/password";
+import { resolveSession, revokeSession } from "@/server/auth/sessions";
+import { verifyToken } from "@/server/auth/token";
+import { getDb, getPrisma } from "@/server/db";
+import { HttpError } from "@/server/errors";
 
 // Runs on the Neon dev branch and needs `pnpm db:seed`. Creates uniquely
 // identified rows and deletes only those; never resets the database.

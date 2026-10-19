@@ -1,7 +1,7 @@
 import { ShieldCheckIcon } from "@/shared/ui/icons";
-import { formatDate } from "@/features/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
 
-import type { CredentialStatus } from "../status";
+import type { CredentialStatus } from "@/contracts/credentials/status";
 
 const TONES = {
   valid: "bg-sage text-brand-800",

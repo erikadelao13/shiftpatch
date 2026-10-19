@@ -36,6 +36,10 @@ Both a database enum and a zod enum; any other role gets `400`. Adding a role ta
 
 See [exec-plans/completed/2026-10-18-ci-and-vercel-deployment.md](exec-plans/completed/2026-10-18-ci-and-vercel-deployment.md).
 
+### 2026-10-19: server code, contracts and Server Actions live outside `src/features/`
+
+`src/features/` is frontend only. Server code lives in `src/server/<module>/`, the contracts the frontend and the server share (DTO types, Zod schemas, enums, pure helpers) in `src/contracts/<module>/`, and Server Actions in `src/actions/<module>.ts`. Actions are the public client-to-server boundary, so they sit beside `src/server/`, which frontend code cannot import. Behavior did not change. See [../ARCHITECTURE.md](../ARCHITECTURE.md) §3.
+
 ## Agent defaults
 
 Chosen by the implementing agent where the spec was silent. Not yet reviewed by the owner; treat them as defaults and change them with a dated entry.
@@ -207,6 +211,26 @@ Agent defaults from the CI and deployment plan, not yet reviewed by the owner:
 - **`engines.node` is `"24.x"`**, matching `.nvmrc` and making Vercel's Node version deterministic.
 - **Production seeding is a separate script with an explicit flag** (`pnpm db:seed:production`), not an environment variable that loosens the dev-branch guard.
 - **gitleaks runs as a checksum-verified binary**, not through `gitleaks/gitleaks-action`, whose v2 tag still declares `node20` and comes under a commercial licence.
+
+### 2026-10-19: placements and lint rules for the server/contracts/actions split
+
+Agent defaults from the separation plan, not yet reviewed by the owner:
+
+- **`use-server-refresh` is in `src/shared/client/`.** Three features use it, and features must not import each other's internals.
+- **`constants.ts` is in `src/server/auth/` and stays free of `server-only`**, because `src/proxy.ts` imports it. `password.ts` and `token.ts` keep the same rule for the seed script and the proxy.
+- **`workspace.ts` is in `src/contracts/auth/`**: a role-to-path map the proxy imports.
+- **ESLint enforces the boundaries with `no-restricted-imports`**, so no new dependency. Frontend code (`features`, `shared`) cannot import `@/server`; contracts import no `@/server`, `@/features`, `@/actions`, `@/shared` or `server-only`; server code cannot import `@/features` or `@/actions`. Relative imports that reach those folders are refused too.
+
+### 2026-10-19: structure inside feature folders
+
+Agent defaults from the feature-folders plan, not yet reviewed by the owner:
+
+- **Folders by role: `views/`, `components/`, `hooks/`, `lib/`.** A view is a client screen that owns state and calls the server; a component is props in, JSX out. `views/` rather than `screens/` or `containers/`, because Next.js already uses "page" and "layout". Every feature has the same shape, and a folder exists only when it has content (`auth` has only `components/`).
+- **`contracts/` holds only what the server also uses.** `schedule`, `describe-event` and `hours` had no server consumer and moved to `features/<module>/lib/`.
+- **Two helper groups went to `shared/lib/`, one more than planned.** `formatDate` is used by credentials, audit, shifts and timesheets. `endsNextDay`, `durationHours` and `formatEndsOn` are used by shifts and by timesheets (`hours.ts` and the table), so leaving them in `shifts/lib/` would have kept a cross-feature import.
+- **`StatCard` is in `shared/ui/`, and the credentials banner reaches `Marketplace` as a `banner` prop** rendered by `nurse/page.tsx`. This resolves TD-20.
+- **No `hooks/` folder, no `use-shift-actions`.** `shift-board` and `marketplace` share only the `apiFetch` call and refresh-on-failure. Their notice types differ (a string against `{ kind, message }`), their cancel reasons differ (a variable against a fixed `"advance"`), and post exists only in the board and claim only in the marketplace. A hook would need options for each difference.
+- **ESLint generates one `no-restricted-imports` block per feature** from a list of names, refusing `@/features/<other>/**` and relative paths that climb into another feature. `shared` also cannot import `@/features`. Adding a feature means adding its name to the list in `eslint.config.mjs`.
 
 ## Open items
 

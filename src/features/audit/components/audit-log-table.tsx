@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { Role } from "@/features/auth/types";
+import type { Role } from "@/contracts/auth/types";
 import {
   AlertTriangleIcon,
   CircleXIcon,
@@ -9,8 +9,8 @@ import {
   UserIcon,
 } from "@/shared/ui/icons";
 
-import { describeAuditEvent, formatEventTime, type AuditEventIcon } from "../describe-event";
-import type { AuditEntry } from "../types";
+import { describeAuditEvent, formatEventTime, type AuditEventIcon } from "@/features/audit/lib/describe-event";
+import type { AuditEntry } from "@/contracts/audit/types";
 
 const ACTION_ICONS: Record<AuditEventIcon, ReactNode> = {
   posted: <NoteIcon />,

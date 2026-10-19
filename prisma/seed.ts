@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { loadEnvConfig } from "@next/env";
 
 import { PrismaClient } from "../src/generated/prisma/client";
-import { hashPassword } from "../src/features/auth/server/password";
+import { hashPassword } from "../src/server/auth/password";
 import { assertDevBranch, assertProductionSeed, isProductionSeed } from "./branch-guard";
 import {
   FIXTURE_PASSWORD,

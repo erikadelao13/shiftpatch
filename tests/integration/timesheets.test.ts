@@ -2,10 +2,10 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { Actor } from "@/features/auth/types";
-import { cancelShift, claimShift, createShift } from "@/features/shifts/server/shift-service";
-import { listTimesheetEntries } from "@/features/timesheets/server/timesheet-service";
-import { getDb, getPrisma } from "@/shared/server/db";
+import type { Actor } from "@/contracts/auth/types";
+import { cancelShift, claimShift, createShift } from "@/server/shifts/shift-service";
+import { listTimesheetEntries } from "@/server/timesheets/timesheet-service";
+import { getDb, getPrisma } from "@/server/db";
 
 import { assertSeededState } from "./support";
 

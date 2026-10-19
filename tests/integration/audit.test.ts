@@ -2,11 +2,11 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { listAuditEntries } from "@/features/audit/server/audit-service";
-import type { Actor } from "@/features/auth/types";
-import { saveCredential } from "@/features/credentials/server/credential-service";
-import { cancelShift, claimShift, createShift } from "@/features/shifts/server/shift-service";
-import { getDb, getPrisma } from "@/shared/server/db";
+import { listAuditEntries } from "@/server/audit/audit-service";
+import type { Actor } from "@/contracts/auth/types";
+import { saveCredential } from "@/server/credentials/credential-service";
+import { cancelShift, claimShift, createShift } from "@/server/shifts/shift-service";
+import { getDb, getPrisma } from "@/server/db";
 
 // Runs on the Neon dev branch. Every actor and shift is throwaway; the audit
 // rows are deleted before the users they reference.

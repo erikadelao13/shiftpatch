@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { SESSION_COOKIE } from "@/features/auth/constants";
-import { requireSession } from "@/features/auth/server/request-auth";
-import { revokeSession } from "@/features/auth/server/sessions";
-import { errorResponse } from "@/shared/server/errors";
+import { SESSION_COOKIE } from "@/server/auth/constants";
+import { requireSession } from "@/server/auth/request-auth";
+import { revokeSession } from "@/server/auth/sessions";
+import { errorResponse } from "@/server/errors";
 
 export async function POST(request: Request) {
   try {

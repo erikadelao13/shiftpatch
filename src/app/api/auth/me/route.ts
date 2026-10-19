@@ -1,7 +1,7 @@
 import { connection } from "next/server";
 
-import { requireActor } from "@/features/auth/server/request-auth";
-import { errorResponse } from "@/shared/server/errors";
+import { requireActor } from "@/server/auth/request-auth";
+import { errorResponse } from "@/server/errors";
 
 export async function GET(request: Request) {
   // Keep the guard out of build-time prerendering.

@@ -1,8 +1,8 @@
 import { expect } from "vitest";
 
 import { fixtureCredentials, fixtureShifts } from "../../prisma/fixtures";
-import { getPrisma } from "@/shared/server/db";
-import { HttpError } from "@/shared/server/errors";
+import { getPrisma } from "@/server/db";
+import { HttpError } from "@/server/errors";
 
 export async function expectHttpError(promise: Promise<unknown>, status: number, message?: string) {
   const error = await promise.then(

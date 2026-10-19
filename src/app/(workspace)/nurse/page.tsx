@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 
-import { requireRole } from "@/features/auth/server/current-user";
-import { getCredentialExpiry } from "@/features/credentials/server/credential-service";
-import { getCredentialStatus, todayIsoDate } from "@/features/credentials/status";
-import { Marketplace } from "@/features/shifts/components/marketplace";
-import { getNurseMarketplace } from "@/features/shifts/server/shift-service";
+import { requireRole } from "@/server/auth/current-user";
+import { getCredentialExpiry } from "@/server/credentials/credential-service";
+import { getCredentialStatus, todayIsoDate } from "@/contracts/credentials/status";
+import { CredentialBanner } from "@/features/credentials/components/credential-banner";
+import { Marketplace } from "@/features/shifts/views/marketplace";
+import { getNurseMarketplace } from "@/server/shifts/shift-service";
 
 export default function NursePage() {
   return (
@@ -25,7 +26,7 @@ async function NurseWorkspace() {
     <Marketplace
       openShifts={openShifts}
       myShifts={myShifts}
-      credential={getCredentialStatus(expiresOn, todayIsoDate())}
+      banner={<CredentialBanner status={getCredentialStatus(expiresOn, todayIsoDate())} />}
     />
   );
 }

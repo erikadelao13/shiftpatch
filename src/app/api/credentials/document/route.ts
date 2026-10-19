@@ -1,7 +1,7 @@
-import { requireActor } from "@/features/auth/server/request-auth";
-import { contentDisposition } from "@/features/credentials/document";
-import { getCredentialDocument } from "@/features/credentials/server/credential-service";
-import { errorResponse } from "@/shared/server/errors";
+import { requireActor } from "@/server/auth/request-auth";
+import { contentDisposition } from "@/contracts/credentials/document";
+import { getCredentialDocument } from "@/server/credentials/credential-service";
+import { errorResponse } from "@/server/errors";
 
 export async function GET(request: Request) {
   try {
