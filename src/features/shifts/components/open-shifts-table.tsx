@@ -1,4 +1,5 @@
-import { formatDate, formatEndsOn } from "@/contracts/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
+import { formatEndsOn } from "@/shared/lib/shift-time";
 import type { MarketplaceShift } from "@/contracts/shifts/types";
 import { StatusBadge } from "./status-badge";
 

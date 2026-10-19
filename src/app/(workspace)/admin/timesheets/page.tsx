@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 
 import { requireRole } from "@/server/auth/current-user";
-import { Timesheet } from "@/features/timesheets/components/timesheet";
+import { Timesheet } from "@/features/timesheets/views/timesheet";
 import { listTimesheetEntries } from "@/server/timesheets/timesheet-service";
 
 export default function AdminTimesheetsPage() {

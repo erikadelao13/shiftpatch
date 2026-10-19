@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { AuditLog } from "@/features/audit/components/audit-log";
+import { AuditLog } from "@/features/audit/views/audit-log";
 import { listAuditEntries } from "@/server/audit/audit-service";
 import { requireRole } from "@/server/auth/current-user";
 

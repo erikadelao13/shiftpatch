@@ -9,7 +9,7 @@ import {
   UserIcon,
 } from "@/shared/ui/icons";
 
-import { describeAuditEvent, formatEventTime, type AuditEventIcon } from "@/contracts/audit/describe-event";
+import { describeAuditEvent, formatEventTime, type AuditEventIcon } from "@/features/audit/lib/describe-event";
 import type { AuditEntry } from "@/contracts/audit/types";
 
 const ACTION_ICONS: Record<AuditEventIcon, ReactNode> = {

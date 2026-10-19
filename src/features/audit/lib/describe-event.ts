@@ -1,6 +1,6 @@
-import { formatDate } from "@/contracts/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
 
-import type { AuditEntry } from "./types";
+import type { AuditEntry } from "@/contracts/audit/types";
 
 export type AuditEventIcon = "posted" | "claimed" | "cancelled" | "no-show" | "credential";
 

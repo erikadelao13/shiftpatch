@@ -1,5 +1,5 @@
 import { ShieldCheckIcon } from "@/shared/ui/icons";
-import { formatDate } from "@/contracts/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
 
 import type { CredentialStatus } from "@/contracts/credentials/status";
 

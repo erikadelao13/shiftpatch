@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import type { Role } from "@/contracts/auth/types";
-import { StatCard } from "@/features/shifts/components/stat-card";
+import { StatCard } from "@/shared/ui/stat-card";
 import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { ClockIcon, RefreshIcon } from "@/shared/ui/icons";
 
-import { formatHours, timesheetTotals } from "@/contracts/timesheets/hours";
+import { formatHours, timesheetTotals } from "@/features/timesheets/lib/hours";
 import type { TimesheetEntry } from "@/contracts/timesheets/types";
-import { TimesheetTable } from "./timesheet-table";
+import { TimesheetTable } from "../components/timesheet-table";
 
 function assignedShiftCount(count: number): string {
   return `${count} assigned ${count === 1 ? "shift" : "shifts"}`;

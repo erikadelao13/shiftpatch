@@ -1,4 +1,4 @@
-import { formatDate } from "@/contracts/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
 import { formatFileSize } from "@/contracts/credentials/document";

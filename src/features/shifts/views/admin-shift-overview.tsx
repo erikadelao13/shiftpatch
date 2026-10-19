@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { RefreshIcon, ShieldCheckIcon } from "@/shared/ui/icons";
 
-import { summarize } from "@/contracts/shifts/schedule";
+import { summarize } from "@/features/shifts/lib/schedule";
 import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import type { AdminShift, AgencyOption } from "@/contracts/shifts/types";
-import { AdminShiftsTable } from "./admin-shifts-table";
-import { ALL, FilterSelect } from "./filter-select";
-import { StatusTabs, type StatusTab, type TabKey } from "./status-tabs";
-import { SummaryCards } from "./summary-cards";
+import { AdminShiftsTable } from "../components/admin-shifts-table";
+import { ALL, FilterSelect } from "../components/filter-select";
+import { StatusTabs, type StatusTab, type TabKey } from "../components/status-tabs";
+import { SummaryCards } from "../components/summary-cards";
 
 type AdminShiftOverviewProps = {
   agencies: AgencyOption[];

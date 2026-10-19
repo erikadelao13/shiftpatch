@@ -1,24 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
-import { CredentialBanner } from "@/features/credentials/components/credential-banner";
-import type { CredentialStatus } from "@/contracts/credentials/status";
 import { apiFetch } from "@/shared/client/api-client";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
-import { formatDate } from "@/contracts/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
 import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { SHIFT_ROLES, type MarketplaceShift, type ShiftDTO } from "@/contracts/shifts/types";
-import { ALL, FilterSelect } from "./filter-select";
-import { MyShiftsTable } from "./my-shifts-table";
-import { OpenShiftsTable } from "./open-shifts-table";
-import { ReopenShiftDialog, type ReopenTarget } from "./reopen-shift-dialog";
+import { ALL, FilterSelect } from "../components/filter-select";
+import { MyShiftsTable } from "../components/my-shifts-table";
+import { OpenShiftsTable } from "../components/open-shifts-table";
+import { ReopenShiftDialog, type ReopenTarget } from "../components/reopen-shift-dialog";
 
 type MarketplaceProps = {
   openShifts: MarketplaceShift[];
   myShifts: MarketplaceShift[];
-  credential: CredentialStatus;
+  banner: ReactNode;
 };
 
 type Notice = { kind: "success" | "error"; message: string };
@@ -27,7 +25,7 @@ function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-export function Marketplace({ openShifts, myShifts, credential }: MarketplaceProps) {
+export function Marketplace({ openShifts, myShifts, banner }: MarketplaceProps) {
   const { refresh, refreshing } = useServerRefresh();
   const [agency, setAgency] = useState(ALL);
   const [role, setRole] = useState(ALL);
@@ -97,7 +95,7 @@ export function Marketplace({ openShifts, myShifts, credential }: MarketplacePro
         </div>
       </header>
 
-      <CredentialBanner status={credential} />
+      {banner}
 
       {notice ? (
         <div

@@ -6,15 +6,16 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { apiFetch } from "@/shared/client/api-client";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
-import { formatDate, summarize } from "@/contracts/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
+import { summarize } from "@/features/shifts/lib/schedule";
 import type { NewShiftInput } from "@/contracts/shifts/schemas";
 import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import type { AgencyShift, CancellationReason, ShiftDTO } from "@/contracts/shifts/types";
-import { PostShiftDialog } from "./post-shift-dialog";
-import { ReopenShiftDialog, type ReopenTarget } from "./reopen-shift-dialog";
-import { ShiftsTable } from "./shifts-table";
-import { StatusTabs, type StatusTab, type TabKey } from "./status-tabs";
-import { SummaryCards } from "./summary-cards";
+import { PostShiftDialog } from "../components/post-shift-dialog";
+import { ReopenShiftDialog, type ReopenTarget } from "../components/reopen-shift-dialog";
+import { ShiftsTable } from "../components/shifts-table";
+import { StatusTabs, type StatusTab, type TabKey } from "../components/status-tabs";
+import { SummaryCards } from "../components/summary-cards";
 
 type ShiftBoardProps = {
   agencyName: string;

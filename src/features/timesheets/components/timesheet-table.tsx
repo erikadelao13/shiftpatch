@@ -1,6 +1,7 @@
-import { durationHours, formatDate, formatEndsOn } from "@/contracts/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
+import { durationHours, formatEndsOn } from "@/shared/lib/shift-time";
 
-import { formatHours } from "@/contracts/timesheets/hours";
+import { formatHours } from "@/features/timesheets/lib/hours";
 import type { TimesheetEntry, TimesheetEntryState } from "@/contracts/timesheets/types";
 
 type Stacking = {

@@ -6,7 +6,7 @@ import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { ClockIcon, LockIcon, RefreshIcon } from "@/shared/ui/icons";
 
 import type { AuditEntry } from "@/contracts/audit/types";
-import { AuditLogTable } from "./audit-log-table";
+import { AuditLogTable } from "../components/audit-log-table";
 
 function eventCount(count: number): string {
   return `${count} ${count === 1 ? "event" : "events"}`;

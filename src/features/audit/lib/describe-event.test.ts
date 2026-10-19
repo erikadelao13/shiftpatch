@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { describeAuditEvent, formatEventTime } from "./describe-event";
-import type { AuditEntry } from "./types";
+import type { AuditEntry } from "@/contracts/audit/types";
 
 const maria = { id: "nurse-1", name: "Maria Lopez", role: "nurse" } as const;
 const sunrise = { id: "agency-a", name: "Sunrise Health Staffing", role: "agency" } as const;

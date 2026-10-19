@@ -1,5 +1,5 @@
-import type { ShiftSummary } from "@/contracts/shifts/schedule";
-import { StatCard } from "./stat-card";
+import type { ShiftSummary } from "@/features/shifts/lib/schedule";
+import { StatCard } from "@/shared/ui/stat-card";
 
 type SummaryCardsProps = {
   summary: ShiftSummary;

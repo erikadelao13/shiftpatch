@@ -12,6 +12,13 @@ const forbidRelative = (names, message) => ({
   message,
 });
 
+const FEATURES = ["audit", "auth", "credentials", "shifts", "timesheets"];
+
+const frontendPatterns = [
+  forbid("server", "Frontend code cannot import @/server. Call a Server Action or an API route."),
+  forbidRelative(["server"], "Frontend code cannot import server code."),
+];
+
 const boundary = (files, patterns, paths = []) => ({
   files,
   rules: { "no-restricted-imports": ["error", { paths, patterns }] },
@@ -21,12 +28,29 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   boundary(
-    ["src/features/**", "src/shared/**"],
+    ["src/shared/**"],
     [
-      forbid("server", "Frontend code cannot import @/server. Call a Server Action or an API route."),
-      forbidRelative(["server"], "Frontend code cannot import server code."),
+      ...frontendPatterns,
+      forbid("features", "Shared code cannot import @/features."),
+      forbidRelative(["features"], "Shared code cannot import features."),
     ],
   ),
+  ...FEATURES.map((name) => {
+    const others = FEATURES.filter((other) => other !== name);
+    return boundary(
+      [`src/features/${name}/**`],
+      [
+        ...frontendPatterns,
+        ...others.map((other) =>
+          forbid(`features/${other}`, `The ${name} feature cannot import the ${other} feature. Compose them in app/ or move the shared code to @/shared.`),
+        ),
+        {
+          regex: `^(\\.\\./)+(${others.join("|")})(/|$)`,
+          message: `The ${name} feature cannot import another feature. Compose them in app/ or move the shared code to @/shared.`,
+        },
+      ],
+    );
+  }),
   boundary(
     ["src/contracts/**"],
     [

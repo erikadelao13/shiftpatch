@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { formatHours, timesheetTotals, totalScheduledHours } from "./hours";
-import type { TimesheetEntry } from "./types";
+import type { TimesheetEntry } from "@/contracts/timesheets/types";
 
 describe("formatHours", () => {
   it("shows whole hours without decimals", () => {

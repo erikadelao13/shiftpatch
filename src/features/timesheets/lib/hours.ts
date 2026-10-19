@@ -1,6 +1,6 @@
-import { durationHours } from "@/contracts/shifts/schedule";
+import { durationHours } from "@/shared/lib/shift-time";
 
-import type { TimesheetEntry } from "./types";
+import type { TimesheetEntry } from "@/contracts/timesheets/types";
 
 type ScheduledShift = Pick<TimesheetEntry, "startTime" | "endTime">;
 

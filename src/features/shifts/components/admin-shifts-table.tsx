@@ -1,4 +1,5 @@
-import { formatDate, formatTimeRange } from "@/contracts/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
+import { formatTimeRange } from "@/features/shifts/lib/schedule";
 import type { AdminShift } from "@/contracts/shifts/types";
 import { AssignedNurse } from "./assigned-nurse";
 import { StatusBadge } from "./status-badge";

@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { z } from "zod";
 
-import { formatDate } from "@/contracts/shifts/schedule";
+import { formatDate } from "@/shared/lib/dates";
 import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { apiFetch } from "@/shared/client/api-client";
 import { DocumentIcon, LockIcon, UploadIcon } from "@/shared/ui/icons";
