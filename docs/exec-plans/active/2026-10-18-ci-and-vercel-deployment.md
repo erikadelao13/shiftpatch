@@ -190,7 +190,7 @@ Work on a branch, `chore/ci-and-deploy`, and commit by context (the `contextual-
 - [ ] ⏸ Owner, in the dashboard:
   - Settings → Environments → Production: automatic aliasing on.
   - Settings → Build and Deployment → Deployment Checks → Add Checks → GitHub: require `Secret scan`, `Checks` and `Tests`.
-- [ ] Confirm the pushed feature branch produced no Vercel deployment.
+- [x] Confirm the pushed feature branch produced no Vercel deployment. After pushing `0bbe483`, `vercel ls` reported "No deployments found" (checked about a minute after the push).
 - [ ] ⏸ Merge the pull request into `main`, using the method the owner chooses. Watch:
   1. CI on `main`.
   2. The Vercel build. Check its log for the pnpm version, the Node version, `prisma generate` and any secret values.
