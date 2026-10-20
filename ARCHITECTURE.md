@@ -1,6 +1,6 @@
 # ShiftPatch Architecture
 
-> Status: implemented baseline, with remaining proposals labeled where they appear. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). the timesheet views for all three roles, derived from `Shift` and `Cancellation` with no recorded work (§5, §9). A `Timesheet` model was decided against on 2026-10-18. Browser server-state moved to TanStack Query on 2026-10-19 (§2, §4), which added six view-shaped GET routes (§7), including `GET /api/timesheets`. CI on GitHub Actions and the Vercel deployment at <https://shiftpatch-tau.vercel.app> (§11, §12).
+> Status: implemented baseline, with remaining proposals labeled where they appear. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). the timesheet views for all three roles, derived from `Shift` and `Cancellation` with no recorded work (§5, §9). A `Timesheet` model was decided against on 2026-10-18. Browser server-state moved to TanStack Query on 2026-10-19 (§2, §4), which added six view-shaped GET routes (§7), including `GET /api/timesheets`. CI on GitHub Actions and the Vercel deployment at <https://shiftpatch-tau.vercel.app> (§11, §12). Since 2026-10-19 views and components only render and hooks own client behavior (§4).
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
@@ -24,7 +24,7 @@ This is a design for the assessment, not evidence of production healthcare compl
 | HTTP API | Route Handlers under `src/app/api`, Node.js runtime | Preserve the exact externally tested routes |
 | Code organization | `src/features/` (frontend only, split into `views/`, `components/`, `hooks/`, `queries/` and `lib/`), `src/server/`, `src/contracts/`, `src/actions/`, `src/shared/` | The frontend cannot import server code, and ESLint enforces it (§3) |
 | Styling | Tailwind CSS with reusable accessible primitives | Consistent UI with limited setup |
-| Client server-state | **Implemented (2026-10-19):** TanStack Query (`@tanstack/react-query` 5.x). Each page's Server Component fetches its query on the server and seeds the browser cache through `<HydrationBoundary>`; views read it with `useSuspenseQuery` and write with `useMutation`, which invalidates the affected keys. `apiFetch` is the transport inside every `queryFn` and `mutationFn`. Defaults: `staleTime` 30 s, no retry, no focus or reconnect refetch and no interval. Admin queries refetch when the tab returns to visible; the Refresh buttons call `refetch()`. No optimistic updates | Request lifecycle, mutation state, and query invalidation across views that share shift data |
+| Client server-state | **Implemented (2026-10-19):** TanStack Query (`@tanstack/react-query` 5.x). Each page's Server Component fetches its query on the server and seeds the browser cache through `<HydrationBoundary>`; feature hooks (§4) read it with `useSuspenseQuery` and write with `useMutation`, which invalidates the affected keys. `apiFetch` is the transport inside every `queryFn` and `mutationFn`. Defaults: `staleTime` 30 s, no retry, no focus or reconnect refetch and no interval. Admin queries refetch when the tab returns to visible; the Refresh buttons call `refetch()`. No optimistic updates | Request lifecycle, mutation state, and query invalidation across views that share shift data |
 | Persistence | Neon Postgres through Prisma | Persistent hosted data, migrations, and transactional writes |
 | Validation | Zod at HTTP boundaries | Validate untrusted input at runtime |
 | Authentication | Self-managed: `node:crypto` scrypt password hashes, HS256 JWTs signed with `jose`, revocable `ApiSession` rows | One token serves both the required email/password-to-token endpoint and the browser, with no second identity provider (§7, `docs/decisions.md`) |
@@ -63,114 +63,128 @@ flowchart TD
 
 Avoid adding generic repository interfaces, dependency-injection containers, or extra layers without a concrete need. Named functions with explicit inputs and a few injectable dependencies are sufficient.
 
-### Planned repository layout
+### Repository layout
 
 ```text
 ARCHITECTURE.md
 docs/
   ShiftPatch-Technical-Spec.md
-  acceptance.md
   decisions.md
 src/
-  proxy.ts                      # implemented: optimistic page redirects (Next.js 16 proxy)
+  proxy.ts                      # optimistic page redirects (Next.js 16 proxy)
   app/
     layout.tsx
-    providers.tsx
-    login/page.tsx              # implemented
+    login/page.tsx
     (workspace)/
-      admin/                    # implemented: sidebar shell and shift overview
+      layout.tsx                # QueryProvider for every workspace page
+      admin/                    # sidebar shell, shift overview, audit log, timesheets
         layout.tsx
-        page.tsx                # reads every shift and every agency from the database
+        page.tsx                # prefetches every shift and every agency
         error.tsx               # inline error with "Try again" (retry())
-        audit/page.tsx          # audit log: the newest 50 events and the total, admin only
-      nurse/                    # implemented: sidebar shell, marketplace, claim and My shifts UI
-      agency/                   # implemented: sidebar shell and shift board UI
+        audit/page.tsx          # the newest 50 events and the total, admin only
+        timesheets/page.tsx
+      nurse/                    # sidebar shell, marketplace and My shifts, credentials, timesheets
+        credentials/page.tsx
+        timesheets/page.tsx
+      agency/                   # sidebar shell, shift board, timesheets
         layout.tsx
-        page.tsx                # implemented: reads the agency's shifts from the database
+        page.tsx                # prefetches the agency's shifts
+        timesheets/page.tsx
     api/
-      auth/login/route.ts       # implemented
-      auth/me/route.ts          # implemented (proposal, not a spec route)
-      auth/logout/route.ts      # implemented (proposal, not a spec route)
-      health/route.ts           # implemented: database reachability (proposal, not a spec route)
-      shifts/route.ts           # implemented: GET list, POST create
-      shifts/[id]/claim/route.ts            # implemented
-      shifts/[id]/cancel/route.ts           # implemented
-      agencies/[agencyId]/shifts/route.ts   # implemented
-      credentials/route.ts                   # implemented: POST upload
-      credentials/document/route.ts          # implemented: GET the signed-in nurse's own document
+      auth/login/route.ts
+      auth/me/route.ts          # not in the spec (proposal)
+      auth/logout/route.ts      # not in the spec (proposal)
+      health/route.ts           # database reachability; not in the spec (proposal)
+      shifts/route.ts           # GET list, POST create
+      shifts/[id]/claim/route.ts
+      shifts/[id]/cancel/route.ts
+      agencies/[agencyId]/shifts/route.ts
+      credentials/route.ts                   # GET the nurse's record, POST upload
+      credentials/document/route.ts          # GET the signed-in nurse's own document
+      agency/board/route.ts                  # the six view routes (owner decision, 2026-10-19)
+      nurse/marketplace/route.ts
+      admin/board/route.ts
+      audit/route.ts
+      timesheets/route.ts
   actions/
-    auth.ts                     # implemented: signIn / signOut Server Actions
+    auth.ts                     # signIn / signOut Server Actions
   contracts/                    # shared by the frontend and the server; no server-only, no @/server
     audit/
-      types.ts                  # implemented
+      types.ts
     auth/
-      types.ts                  # implemented
-      schemas.ts                # implemented
-      workspace.ts              # implemented: role -> workspace path; imported by the proxy
+      types.ts
+      schemas.ts
+      workspace.ts              # role -> workspace path; imported by the proxy
     credentials/
-      types.ts                  # implemented
-      schemas.ts                # implemented: credentialFileSchema and credentialUploadSchema, for the form and the route
-      status.ts                 # implemented: getCredentialStatus, todayIsoDate
-      document.ts               # implemented: detectDocumentType, cleanFileName, contentDisposition, formatFileSize (no server-only; the UI shares it)
+      types.ts
+      schemas.ts                # credentialFileSchema and credentialUploadSchema, for the form and the route
+      status.ts                 # getCredentialStatus, todayIsoDate
+      document.ts               # detectDocumentType, cleanFileName, contentDisposition, formatFileSize (no server-only; the UI shares it)
     shifts/
-      types.ts                  # implemented: ShiftDTO, CancelledShiftDTO, AgencyShift, CANCELLATION_REASONS
-      schemas.ts                # implemented: newShiftSchema and cancelShiftSchema, shared by the dialogs and the API
+      types.ts                  # ShiftDTO, CancelledShiftDTO, AgencyShift, CANCELLATION_REASONS
+      schemas.ts                # newShiftSchema and cancelShiftSchema, shared by the dialogs and the API
     timesheets/
-      types.ts                  # implemented: TimesheetEntry
+      types.ts                  # TimesheetEntry
   server/                       # frontend code cannot import it
-    db.ts                       # implemented
-    errors.ts                   # implemented
-    http.ts                     # implemented: readJson
+    db.ts
+    errors.ts
+    http.ts                     # readJson
     auth/
-      constants.ts              # implemented: no server-only; the proxy imports it
+      constants.ts              # no server-only; the proxy imports it
       password.ts
       token.ts                  # no Prisma import; the proxy uses it
       sessions.ts
       login.ts
-      request-auth.ts           # requireActor / requireSession
+      request-auth.ts           # requireActor / requireSession / requireActorRole
       current-user.ts           # getCurrentUser / requireRole for pages
     shifts/
-      shift-service.ts          # implemented: Prisma calls live here, no repository layer
-      shift-policy.ts           # implemented: canPostShift, canReadAgencyShifts, canClaimShift, credentialClaimError, canRecordNoShow, cancellationRefusal
-      shift-presenter.ts        # implemented: toShiftDTO and toCancelledShiftDTO, explicit serializers; the only place that maps the database's `no_show` to the API's spelling `"no-show"`
+      shift-service.ts          # Prisma calls live here, no repository layer
+      shift-policy.ts           # canPostShift, canReadAgencyShifts, canClaimShift, credentialClaimError, canRecordNoShow, cancellationRefusal
+      shift-presenter.ts        # toShiftDTO and toCancelledShiftDTO, explicit serializers; the only place that maps the database's `no_show` to the API's spelling `"no-show"`
     credentials/
-      credential-service.ts     # implemented: getCredentialExpiry, getCredentialRecord, saveCredential, getCredentialDocument
+      credential-service.ts     # getCredentialExpiry, getCredentialRecord, saveCredential, getCredentialDocument
     audit/
-      audit-presenter.ts        # implemented: per-action metadata schemas, toAuditEntry (malformed metadata throws)
-      audit-service.ts          # implemented: recordAuditEvent (transaction client only), listAuditEntries
+      audit-presenter.ts        # per-action metadata schemas, toAuditEntry (malformed metadata throws)
+      audit-service.ts          # recordAuditEvent (transaction client only), listAuditEntries
     timesheets/
-      timesheet-presenter.ts    # implemented: toTimesheetEntries merges and orders assignments and history
-      timesheet-service.ts      # implemented: listTimesheetEntries(scope)
-  features/                     # frontend only; a feature never imports another feature
+      timesheet-presenter.ts    # toTimesheetEntries merges and orders assignments and history
+      timesheet-service.ts      # listTimesheetEntries(scope)
+  features/                     # frontend only; a feature never imports another feature (§4)
     auth/
-      components/               # implemented: login form
+      views/                    # login-form
+      hooks/                    # use-login-form
     shifts/
-      views/                    # implemented: client screens that own state and call the API: shift-board, marketplace, admin-shift-overview
-      queries/                  # implemented: queryOptions for the agency board, marketplace and admin board
-      components/               # implemented: presentational tables, badges, tabs and the post and reopen dialogs
-      lib/                      # implemented: schedule (summarize, formatTimeRange, compareShifts) and its test
+      views/                    # shift-board, marketplace, admin-shift-overview
+      hooks/                    # one coordinating hook per view, plus mutations, filters, status tabs and the dialogs' hooks
+      queries/                  # queryOptions for the agency board, marketplace and admin board
+      components/               # tables, badges, tabs, filter select, and the post and reopen dialogs
+      lib/                      # schedule, filters (status tabs, agency and role filters), reopen (dialog copy and types), with tests
     credentials/
-      views/                    # implemented: credential-workspace, credential-status, credential-upload-form
-      queries/                  # implemented: credential query
-      components/               # implemented: credential banner, current credential card
+      views/                    # credential-workspace, credential-status, credential-upload-form
+      hooks/                    # use-credential, use-credential-upload, use-file-drop
+      queries/                  # credential query
+      components/               # credential banner, current credential card
     audit/
-      views/                    # implemented: audit-log
-      queries/                  # implemented: audit query
-      components/               # implemented: audit-log-table
-      lib/                      # implemented: describe-event (action labels and details) and its test
+      views/                    # audit-log
+      hooks/                    # use-audit-log
+      queries/                  # audit query
+      components/               # audit-log-table
+      lib/                      # describe-event (action labels and details) and its test
     timesheets/
-      views/                    # implemented: timesheet
-      queries/                  # implemented: timesheets query
-      components/               # implemented: timesheet-table
-      lib/                      # implemented: hours (formatHours, totalScheduledHours, timesheetTotals) and its test
+      views/                    # timesheet
+      hooks/                    # use-timesheet
+      queries/                  # timesheets query
+      components/               # timesheet-table
+      lib/                      # hours (formatHours, totalScheduledHours, timesheetTotals) and its test
   shared/
-    ui/                         # implemented: icons, logo, sidebar, sign-out-form, refresh-error, stat-card
-    lib/                        # implemented: dates (formatDate) and shift-time (endsNextDay, durationHours, formatEndsOn), with tests
-    client/api-client.ts        # implemented: apiFetch
-    client/query-client.ts      # implemented: makeQueryClient (defaults)
-    client/query-provider.tsx   # implemented: QueryProvider, one client per server render and one in the browser
-    client/query-keys.ts        # implemented: key factories, each starting with the user ID
-prisma.config.ts                # implemented
+    ui/                         # icons, logo, sidebar, sidebar-nav, sign-out-form, refresh-error, stat-card
+    hooks/                      # use-query-refresh, use-sign-out: hooks more than one feature or shared/ui needs
+    lib/                        # dates (formatDate), shift-time (endsNextDay, durationHours, formatEndsOn), text (plural, initialsOf), with tests
+    client/api-client.ts        # apiFetch
+    client/query-client.ts      # makeQueryClient (defaults)
+    client/query-provider.tsx   # QueryProvider, one client per server render and one in the browser
+    client/query-keys.ts        # key factories, each starting with the user ID
+prisma.config.ts
 prisma/
   schema.prisma
   migrations/
@@ -178,20 +192,21 @@ prisma/
   seed.ts
   branch-guard.ts               # refuses writes unless NEON_BRANCH=dev
 tests/
-  integration/                  # implemented: runs on the Neon dev branch
+  integration/                  # runs on the Neon dev branch
   unit/
+  stubs/                        # server-only stub for Vitest
 e2e/                            # Playwright specs
 .github/workflows/ci.yml
 ```
 
-This is a target layout, not a requirement to create empty files or folders. Add each module when its feature needs it. Collocate small unit/component tests with their implementation; use `tests/integration` and `tests/e2e` for broader behavior.
+Add each module when its feature needs it, not as an empty file or folder. Collocate unit tests with their implementation; use `tests/integration` and `e2e/` for broader behavior.
 
-The six required API routes are fixed. All other routes listed above are proposed supporting endpoints.
+The six spec routes are fixed. The other routes are supporting endpoints: the six view routes are an owner decision (2026-10-19), and `auth/me`, `auth/logout` and `health` remain agent proposals.
 
 ### Dependency rules
 
 - `app/` composes features and adapts framework requests; features never import from `app/`.
-- Within a feature, `views/` may use `components/`, `hooks/` and `lib/`, `@/contracts`, `@/actions` and `@/shared`. `components/` stays presentational: no `apiFetch`, no server calls. `lib/` holds UI-only pure helpers with no React and no I/O. `hooks/` appears only when two views share state or mutation logic; none exists yet. `queries/` holds `queryOptions` factories: the key from `@/shared/client/query-keys` and the browser `queryFn` (`apiFetch`). A view calls them with `useSuspenseQuery`, and an `app/` page spreads them with a server `queryFn` for the prefetch. Components never import them.
+- Within a feature, `views/` and `components/` import `components/`, `lib/`, `@/contracts`, `@/shared/ui` and `@/shared/lib`, and take their behavior from `hooks/`. `hooks/` import `queries/`, `lib/`, `@/contracts`, `@/actions`, `@/shared/client`, `@/shared/hooks` and `@/shared/lib`. `queries/` holds `queryOptions` factories: the key from `@/shared/client/query-keys` and the browser `queryFn` (`apiFetch`); a hook reads them with `useSuspenseQuery`, and an `app/` page spreads them with a server `queryFn` for the prefetch. What belongs in each folder is defined once, in §4 "Views, components, hooks and lib".
 - Server services depend on explicit actor/context inputs, policies, and persistence functions.
 - Contracts depend on nothing but other contracts and libraries.
 - Shared modules remain feature-independent. Avoid turning `shared/` into a collection of unrelated business rules.
@@ -201,13 +216,24 @@ The six required API routes are fixed. All other routes listed above are propose
 
 ## 4. Frontend architecture
 
-Each feature owns its views, components and UI helpers. Its input schemas and public DTO types live in `src/contracts/<module>/` and its server implementation in `src/server/<module>/`. Reuse framework-independent types and safe validation code across boundaries through contracts; never expose database models as browser contracts.
+Each feature owns its views, components, hooks, queries and UI helpers. Its input schemas and public DTO types live in `src/contracts/<module>/` and its server implementation in `src/server/<module>/`. Reuse framework-independent types and safe validation code across boundaries through contracts; never expose database models as browser contracts.
+
+### Views, components, hooks and lib
+
+**Implemented (owner decision, 2026-10-19).** This is the canonical rule for where frontend code goes; other documents link here instead of restating it.
+
+- **Server first.** Pages and layouts in `src/app/` stay Server Components: they authorize (`requireRole`), prefetch queries and pass plain props. Business rules, validation and authorization stay on the server (`src/server/`, the Route Handlers, the shared Zod schemas). A hook may validate a form for fast feedback, never instead of the server.
+- **Views render.** A view in `views/` is a client screen. When it has behavior, it calls exactly one coordinating hook from its feature's `hooks/`, named after it (`shift-board` calls `useShiftBoard`), and renders what that hook returns.
+- **Components render.** A component in `components/` (or `src/shared/ui/`) renders from props. It never reads a query or calls the server. When it has UI behavior of its own (a dialog's open state and validation, arrow keys on tabs), it calls one hook for that behavior.
+- **Hooks own behavior.** State, refs, effects, queries, mutations, Server Action calls and event handlers live in `hooks/`. A coordinating hook composes smaller hooks for distinct responsibilities, such as a feature's mutations, a filter, a dialog or a refresh announcement. Split out a smaller hook when a responsibility is distinct, whether or not a second view needs it yet; do not split a single line into its own hook, and do not grow one hook across unrelated responsibilities. A hook needed by more than one feature, or by `shared/ui`, lives in `src/shared/hooks/`.
+- **lib computes.** Pure calculations (filtering, counting, totals, formatting data) live in `lib/` with no React and no I/O, with unit tests beside them. Static copy and class maps that only choose what to render may stay beside their component.
+- **Enforced.** `eslint.config.mjs` refuses, in `views/`, `components/` and `src/shared/ui/`, imports of React's state, ref and effect hooks, TanStack Query's hooks, `apiFetch` and `@/actions`. Hooks have no unit tests yet; the e2e specs cover them (TD-1).
 
 ### State ownership
 
 | State | Owner |
 | --- | --- |
-| Dialog open state, selected cancellation reason, form fields | Local React state |
+| Dialog open state, selected cancellation reason, form fields, filters, tabs, notices | React state inside the view's or component's hook |
 | Agency board, nurse marketplace, admin board, credential record | TanStack Query cache, seeded by the page's Server Component and invalidated by the mutations that affect it |
 | Application user profile | Read by each page and layout on the server (`requireRole`) and passed down as props |
 | Audit rows, timesheet entries | TanStack Query cache, seeded by the page and refetched by the Refresh button (admin pages also on tab return) |
@@ -216,11 +242,11 @@ Each feature owns its views, components and UI helpers. Its input schemas and pu
 | API token | Returned in the body of `POST /api/auth/login` to direct API callers. The browser holds the same kind of token only in the HttpOnly cookie; page JavaScript never receives it |
 | Required API DTOs | Explicit serializers and TypeScript types |
 
-Use Server Components for page shells and session-aware entry points; put forms, queries, and interactive controls in small Client Components. Shift and credential UI mutations call the actual Route Handlers. The browser login form submits to the `signIn` Server Action, which calls the same `authenticate()` as the API route; the direct login endpoint has its own contract tests. Both paths resolve the same application user and permissions.
+Use Server Components for page shells and session-aware entry points, and Client Components for forms and interactive controls, with their behavior in hooks (above). Shift and credential UI mutations call the actual Route Handlers. The browser login form submits to the `signIn` Server Action, which calls the same `authenticate()` as the API route; the direct login endpoint has its own contract tests. Both paths resolve the same application user and permissions.
 
 The login form keeps the required test IDs on real controls (`login-email-input`, `login-password-input`, `login-submit-button`), and failures render in `notification-banner`. With `cacheComponents` enabled, every session read sits behind `<Suspense>` so the static shell can still prerender.
 
-Scope query keys by actor and resource. Clear user-specific query state at logout/account changes. After posting, claiming, cancelling, or uploading a credential, invalidate the affected queries. Refetch the visible admin dashboard on focus; PRODUCT requires no timer, so there is no interval. **Implemented (2026-10-19):** keys start with the user ID (`query-keys.ts`), and the sidebar's sign-out form (`shared/ui/sign-out-form.tsx`) calls `queryClient.clear()` before the `signOut` action, not in a provider-unmount effect, which React Strict Mode would run on the freshly hydrated cache. Invalidation map: posting invalidates `agencyBoard` (awaited, so "Posting…" lasts until the new row renders); an agency cancel or no-show invalidates `agencyBoard` and `timesheets` (awaited, also on failure); a nurse claim invalidates `marketplace` and `timesheets` (not awaited, the table stays busy while it refetches); a nurse cancel invalidates the same two (awaited, also on failure); a credential upload invalidates `credential` (awaited). The admin queries set `refetchOnWindowFocus: "always"`, so returning to the tab refetches inside `staleTime`; TanStack Query's `focusManager` listens for `visibilitychange` on `window`, so a synthetic event must bubble. A failed refetch keeps the rows and shows its message in a `role="alert"` (`RefreshError`); a failed initial read still reaches `error.tsx`. Server prefetch uses `fetchQuery`, which throws, with a server `queryFn` over the same service call the route uses. The agency filter and tab are client state and survive a refetch. `getAdminBoard()` (every shift with agency and nurse names, in schedule order) and `listAgencies()` (by name) in `shift-service.ts` take no actor, like `getAgencyBoard`; the page's `requireRole("admin")` authorizes. `GET /api/admin/board` serves the same data to the browser (§7).
+Scope query keys by actor and resource. Clear user-specific query state at logout/account changes. After posting, claiming, cancelling, or uploading a credential, invalidate the affected queries. Refetch the visible admin dashboard on focus; PRODUCT requires no timer, so there is no interval. **Implemented (2026-10-19):** keys start with the user ID (`query-keys.ts`), and the sidebar's sign-out form (`shared/ui/sign-out-form.tsx`) uses `useSignOut` (`shared/hooks/use-sign-out.ts`), which calls `queryClient.clear()` before the `signOut` action, not in a provider-unmount effect, which React Strict Mode would run on the freshly hydrated cache. Invalidation map: posting invalidates `agencyBoard` (awaited, so "Posting…" lasts until the new row renders); an agency cancel or no-show invalidates `agencyBoard` and `timesheets` (awaited, also on failure); a nurse claim invalidates `marketplace` and `timesheets` (not awaited, the table stays busy while it refetches); a nurse cancel invalidates the same two (awaited, also on failure); a credential upload invalidates `credential` (awaited). The admin queries set `refetchOnWindowFocus: "always"`, so returning to the tab refetches inside `staleTime`; TanStack Query's `focusManager` listens for `visibilitychange` on `window`, so a synthetic event must bubble. A failed refetch keeps the rows and shows its message in a `role="alert"` (`RefreshError`); a failed initial read still reaches `error.tsx`. Server prefetch uses `fetchQuery`, which throws, with a server `queryFn` over the same service call the route uses. The agency filter and tab are client state and survive a refetch. `getAdminBoard()` (every shift with agency and nurse names, in schedule order) and `listAgencies()` (by name) in `shift-service.ts` take no actor, like `getAgencyBoard`; the page's `requireRole("admin")` authorizes. `GET /api/admin/board` serves the same data to the browser (§7).
 
 Show loading, empty, success, and error states. Disable duplicate submission while a mutation is pending, but keep server concurrency protection. Reconcile from the server response before displaying a completed claim.
 

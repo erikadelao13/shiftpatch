@@ -5,7 +5,7 @@ Entry point for agents and contributors: [AGENTS.md](../AGENTS.md).
 | Document | Contains | Status |
 | --- | --- | --- |
 | [PRODUCT.md](PRODUCT.md) | Purpose, users, workflows, scope | Current |
-| [../ARCHITECTURE.md](../ARCHITECTURE.md) | Implemented baseline, remaining proposals labeled inline | Current |
+| [../ARCHITECTURE.md](../ARCHITECTURE.md) | Implemented baseline, frontend code placement (§4), remaining proposals labeled inline | Current |
 | [DESIGN.md](DESIGN.md) | Visual direction, tokens, states, accessibility | Current — every role's screens implemented |
 | [VERIFICATION.md](VERIFICATION.md) | Commands, what each proves, change matrix, limits | Current |
 | [PLANS.md](PLANS.md) | When a plan is required, template, lifecycle | Current |

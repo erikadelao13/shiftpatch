@@ -40,6 +40,12 @@ See [exec-plans/completed/2026-10-18-ci-and-vercel-deployment.md](exec-plans/com
 
 `src/features/` is frontend only. Server code lives in `src/server/<module>/`, the contracts the frontend and the server share (DTO types, Zod schemas, enums, pure helpers) in `src/contracts/<module>/`, and Server Actions in `src/actions/<module>.ts`. Actions are the public client-to-server boundary, so they sit beside `src/server/`, which frontend code cannot import. Behavior did not change. See [../ARCHITECTURE.md](../ARCHITECTURE.md) §3.
 
+### 2026-10-19: views and components render; hooks own behavior
+
+Views and components focus on rendering. State, effects, requests, mutations and event logic live in hooks, with one coordinating hook per view that has behavior, composed from smaller hooks for distinct responsibilities. Pure calculations stay in `lib/`. Server Components and server-side business rules, validation and authorization do not move. The rule itself is in [../ARCHITECTURE.md](../ARCHITECTURE.md) §4 "Views, components, hooks and lib".
+
+This supersedes, in the 2026-10-19 agent defaults below: the view definition "a client screen that owns state and calls the server", "No `hooks/` folder, no `use-shift-actions`", and "Mutations stay inline in the views". It also removes the ARCHITECTURE §3 rule that `hooks/` appears only when two views share logic: a hook no longer waits for a second user. Behavior, API contracts, authentication, permissions and test IDs did not change. See [exec-plans/completed/2026-10-19-view-hooks.md](exec-plans/completed/2026-10-19-view-hooks.md).
+
 ## Agent defaults
 
 Chosen by the implementing agent where the spec was silent. Not yet reviewed by the owner; treat them as defaults and change them with a dated entry.
@@ -243,6 +249,18 @@ Owner decision (full scope), with agent defaults for the open details from the d
 - **A failed refresh keeps the rows** and shows the error in a `role="alert"` (DESIGN "Refreshing"); initial-load failures still reach `error.tsx`.
 - **Tooling:** `@tanstack/eslint-plugin-query` as a devDependency; no Devtools.
 - **No optimistic updates and no polling**, as PRODUCT requires.
+
+### 2026-10-19: placements for view hooks
+
+Agent defaults from the view-hooks plan, not yet reviewed by the owner:
+
+- **Hooks used by more than one feature, or by `shared/ui`, live in `src/shared/hooks/`**: `useQueryRefresh` (the Refresh button's announcement and error, used by the admin overview, audit log and timesheets) and `useSignOut`.
+- **Mutations get one hook per actor** (`useAgencyShiftMutations`, `useNurseShiftMutations`) rather than one shared `use-shift-actions`, because the invalidated keys, reasons and follow-up notices differ. The credential upload keeps its single mutation inside `useCredentialUpload`.
+- **`login-form` moved from `auth/components/` to `auth/views/`**, because it calls a Server Action through `useLoginForm`, which a component may not.
+- **The dialogs stay in `components/`** and take their behavior from `usePostShiftDialog` and `useReopenShiftDialog`, which share `useModalDialog`.
+- **ESLint enforces the render-only rule** with `no-restricted-imports` in `views/`, `components/` and `shared/ui/`. Each of those blocks repeats its folder's boundary patterns, because a later flat-config block replaces an earlier block's options for the same rule.
+- **Views destructure what their hook returns.** The React Compiler lint (`react-hooks/refs`) treats every property of a returned object that holds a ref as a ref, so `board.notice` fails where a destructured `notice` passes.
+- `use-server-refresh` (2026-10-19 placements entry above) was deleted by the TanStack Query change in `d1bf7d1`.
 
 ## Open items
 

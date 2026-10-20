@@ -30,7 +30,7 @@ Index: [docs/README.md](docs/README.md).
 ## Working agreements
 
 - Inspect affected code, callers, tests, docs, and in-flight changes before editing. Preserve unrelated work.
-- Read Product before behavior work, Architecture before boundary/interface/persistence changes, Design before UI edits. Investigate disagreements between code, tests, and docs instead of silently picking one.
+- Read Product before behavior work, Architecture before boundary/interface/persistence changes, [Architecture §4 "Views, components, hooks and lib"](ARCHITECTURE.md#views-components-hooks-and-lib) before writing frontend code, Design before UI edits. Investigate disagreements between code, tests, and docs instead of silently picking one.
 - Product, Architecture, and Design may be updated by agents as part of normal work — keep them current rather than letting them drift. Mark anything unconfirmed as a proposal, not a requirement.
 - Do not invent product rules, users, entities, or integrations. Unknowns stay visibly unknown.
 - Use **pnpm** (`packageManager` pins pnpm 10.27.0). Commit `pnpm-lock.yaml` with dependency changes. Never edit `.next/`, `node_modules/`, or `next-env.d.ts`.
