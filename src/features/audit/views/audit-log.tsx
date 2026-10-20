@@ -1,33 +1,21 @@
 "use client";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
-
+import { plural } from "@/shared/lib/text";
 import { ClockIcon, LockIcon, RefreshIcon } from "@/shared/ui/icons";
 import { RefreshError } from "@/shared/ui/refresh-error";
 
 import { AuditLogTable } from "../components/audit-log-table";
-import { auditQuery } from "../queries/audit-query";
-
-function eventCount(count: number): string {
-  return `${count} ${count === 1 ? "event" : "events"}`;
-}
+import { useAuditLog } from "../hooks/use-audit-log";
 
 export function AuditLog({ userId }: { userId: string }) {
   const {
-    data: { entries, total },
-    refetch,
-    isFetching,
-    isRefetchError,
-    error,
-  } = useSuspenseQuery(auditQuery(userId));
-  const [announcement, setAnnouncement] = useState("");
-
-  async function refreshFromButton() {
-    setAnnouncement("");
-    const result = await refetch();
-    if (!result.isError) setAnnouncement("Audit log refreshed.");
-  }
+    entries,
+    total,
+    refreshing,
+    refresh,
+    refreshError,
+    announcement,
+  } = useAuditLog(userId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,17 +35,17 @@ export function AuditLog({ userId }: { userId: string }) {
           </div>
           <button
             type="button"
-            disabled={isFetching}
-            onClick={() => void refreshFromButton()}
+            disabled={refreshing}
+            onClick={() => void refresh()}
             className="flex h-11 items-center gap-2 rounded-control border border-input-border bg-surface px-4 font-medium hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshIcon />
-            {isFetching ? "Refreshing…" : "Refresh"}
+            {refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </header>
 
-      <RefreshError error={isRefetchError ? error : null} />
+      <RefreshError error={refreshError} />
 
       <p role="status" className="sr-only">
         {announcement}
@@ -74,7 +62,7 @@ export function AuditLog({ userId }: { userId: string }) {
             </h2>
             <p className="mt-1 text-text-muted">Successful actions, recorded as they happen.</p>
           </div>
-          <p className="text-sm text-text-muted">{eventCount(total)}</p>
+          <p className="text-sm text-text-muted">{plural(total, "event")}</p>
         </div>
 
         <div className="mx-5 border-t border-border sm:mx-6">
@@ -88,7 +76,7 @@ export function AuditLog({ userId }: { userId: string }) {
             <p>
               {total > entries.length
                 ? `Showing ${entries.length} of ${total} events`
-                : `Showing ${eventCount(entries.length)}`}
+                : `Showing ${plural(entries.length, "event")}`}
             </p>
             <p className="flex items-center gap-2">
               <ClockIcon />

@@ -1,46 +1,33 @@
 "use client";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
-
+import { plural } from "@/shared/lib/text";
 import { RefreshIcon, ShieldCheckIcon } from "@/shared/ui/icons";
 import { RefreshError } from "@/shared/ui/refresh-error";
 
-import { summarize } from "@/features/shifts/lib/schedule";
 import { AdminShiftsTable } from "../components/admin-shifts-table";
-import { ALL, FilterSelect } from "../components/filter-select";
-import { StatusTabs, type StatusTab, type TabKey } from "../components/status-tabs";
+import { FilterSelect } from "../components/filter-select";
+import { StatusTabs } from "../components/status-tabs";
 import { SummaryCards } from "../components/summary-cards";
-import { adminBoardQuery } from "../queries/admin-board-query";
+import { useAdminShiftOverview } from "../hooks/use-admin-shift-overview";
 
 export function AdminShiftOverview({ userId }: { userId: string }) {
   const {
-    data: { agencies, shifts },
-    refetch,
-    isFetching,
-    isRefetchError,
-    error,
-  } = useSuspenseQuery(adminBoardQuery(userId));
-  const [agencyId, setAgencyId] = useState(ALL);
-  const [tab, setTab] = useState<TabKey>("all");
-  const [announcement, setAnnouncement] = useState("");
-
-  async function refreshFromButton() {
-    setAnnouncement("");
-    const result = await refetch();
-    if (!result.isError) setAnnouncement("Shift overview refreshed.");
-  }
-
-  const activeAgency = agencies.some((agency) => agency.id === agencyId) ? agencyId : ALL;
-  const inAgency = shifts.filter((shift) => activeAgency === ALL || shift.agencyId === activeAgency);
-  const summary = summarize(inAgency);
-  const tabs: StatusTab[] = [
-    { key: "all", label: "All shifts", count: inAgency.length },
-    { key: "open", label: "Open", count: summary.open },
-    { key: "filled", label: "Filled", count: summary.filled },
-  ];
-  const visible = inAgency.filter((shift) => tab === "all" || shift.status === tab);
-  const filtering = activeAgency !== ALL || tab !== "all";
+    refreshing,
+    refresh,
+    refreshError,
+    announcement,
+    agencies,
+    shifts,
+    activeAgency,
+    setAgencyId,
+    summary,
+    tab,
+    setTab,
+    tabs,
+    visible,
+    filtering,
+    clearFilters,
+  } = useAdminShiftOverview(userId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,17 +47,17 @@ export function AdminShiftOverview({ userId }: { userId: string }) {
           </div>
           <button
             type="button"
-            disabled={isFetching}
-            onClick={() => void refreshFromButton()}
+            disabled={refreshing}
+            onClick={() => void refresh()}
             className="flex h-11 items-center gap-2 rounded-control border border-input-border bg-surface px-4 font-medium hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshIcon />
-            {isFetching ? "Refreshing…" : "Refresh"}
+            {refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </header>
 
-      <RefreshError error={isRefetchError ? error : null} />
+      <RefreshError error={refreshError} />
 
       <p role="status" className="sr-only">
         {announcement}
@@ -109,10 +96,7 @@ export function AdminShiftOverview({ userId }: { userId: string }) {
               {filtering ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setAgencyId(ALL);
-                    setTab("all");
-                  }}
+                  onClick={clearFilters}
                   className="h-11 rounded-control border border-brand-800 bg-surface px-4 font-medium text-brand-800 hover:bg-surface-subtle"
                 >
                   Clear filters
@@ -126,7 +110,7 @@ export function AdminShiftOverview({ userId }: { userId: string }) {
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-4 text-sm text-text-muted sm:px-6">
           <p>
-            Showing {visible.length} {visible.length === 1 ? "shift" : "shifts"}
+            Showing {plural(visible.length, "shift")}
           </p>
           <p>Facility-local time</p>
         </div>

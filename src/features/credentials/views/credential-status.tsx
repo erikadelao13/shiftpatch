@@ -1,12 +1,10 @@
 "use client";
 
-import { useSuspenseQuery } from "@tanstack/react-query";
-
 import { CredentialBanner } from "../components/credential-banner";
-import { credentialQuery } from "../queries/credential-query";
+import { useCredential } from "../hooks/use-credential";
 
 export function CredentialStatus({ userId }: { userId: string }) {
-  const { data } = useSuspenseQuery(credentialQuery(userId));
+  const { status } = useCredential(userId);
 
-  return <CredentialBanner status={data.status} />;
+  return <CredentialBanner status={status} />;
 }

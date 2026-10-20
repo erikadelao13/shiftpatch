@@ -17,7 +17,7 @@ Run what the change matrix in `docs/VERIFICATION.md` prescribes — at minimum:
 
 Broaden only for failures, new edits, or an unresolved concern. Hooks can supply evidence, but check their scope: `.githooks/` checks inspect the working tree, so they never establish that an exact staged or pushed revision is sound, and a passing Stop hook proves documentation structure only.
 
-Exercise the real boundary when one is involved. `pnpm build` succeeding is not proof that a page is usable; a green smoke spec is not proof that behavior is correct — the suite in `e2e/` is deliberately thin (see TD-1 in the debt tracker). Say so rather than implying coverage that does not exist.
+Exercise the real boundary when one is involved. `pnpm build` succeeding is not proof that a page is usable; a green e2e spec is not proof that behavior is correct — there is no component- or hook-level testing (see TD-1 in the debt tracker). Say so rather than implying coverage that does not exist.
 
 Record exact commands and results, including skipped runs, zero-test runs, and prerequisite failures such as missing Playwright browsers. Fix failures that are in scope; report pre-existing or external blockers plainly instead of weakening a check to get green.
 

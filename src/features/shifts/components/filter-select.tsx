@@ -1,6 +1,6 @@
 import { ChevronDownIcon } from "@/shared/ui/icons";
 
-export const ALL = "all";
+import { ALL } from "../lib/filters";
 
 type FilterSelectProps = {
   label: string;

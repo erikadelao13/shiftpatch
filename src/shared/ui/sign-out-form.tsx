@@ -1,7 +1,8 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+
+import { useSignOut } from "@/shared/hooks/use-sign-out";
 
 export function SignOutForm({
   action,
@@ -10,16 +11,7 @@ export function SignOutForm({
   action: () => Promise<void>;
   children: ReactNode;
 }) {
-  const queryClient = useQueryClient();
+  const signOut = useSignOut(action);
 
-  return (
-    <form
-      action={async () => {
-        queryClient.clear();
-        await action();
-      }}
-    >
-      {children}
-    </form>
-  );
+  return <form action={signOut}>{children}</form>;
 }

@@ -1,17 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
-
-import { signIn, type SignInState } from "@/actions/auth";
-
-const initialState: SignInState = { email: "" };
+import { useLoginForm } from "../hooks/use-login-form";
 
 const inputClass =
   "h-[52px] w-full rounded-control border border-input-border bg-surface px-4 text-base text-text placeholder:text-text-muted aria-[invalid=true]:border-danger-text";
 
 export function LoginForm() {
-  const [state, formAction, pending] = useActionState(signIn, initialState);
-  const [showPassword, setShowPassword] = useState(false);
+  const { state, formAction, pending, showPassword, togglePassword } = useLoginForm();
   const invalid = state.error ? true : undefined;
 
   return (
@@ -60,7 +55,7 @@ export function LoginForm() {
           />
           <button
             type="button"
-            onClick={() => setShowPassword((shown) => !shown)}
+            onClick={togglePassword}
             aria-label={showPassword ? "Hide password" : "Show password"}
             aria-pressed={showPassword}
             className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-control text-text-muted hover:text-text"

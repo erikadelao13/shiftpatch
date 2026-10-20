@@ -1,21 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
 
 import type { Role } from "@/contracts/auth/types";
+import { plural } from "@/shared/lib/text";
 import { StatCard } from "@/shared/ui/stat-card";
 import { ClockIcon, RefreshIcon } from "@/shared/ui/icons";
 import { RefreshError } from "@/shared/ui/refresh-error";
 
-import { formatHours, timesheetTotals } from "@/features/timesheets/lib/hours";
 import { TimesheetTable } from "../components/timesheet-table";
-import { timesheetsQuery } from "../queries/timesheets-query";
-
-function assignedShiftCount(count: number): string {
-  return `${count} assigned ${count === 1 ? "shift" : "shifts"}`;
-}
+import { useTimesheet } from "../hooks/use-timesheet";
 
 type Copy = {
   heading: string;
@@ -51,22 +45,15 @@ const COPY: Record<Role, Copy> = {
 
 export function Timesheet({ audience, userId }: { audience: Role; userId: string }) {
   const {
-    data: entries,
-    refetch,
-    isFetching,
-    isRefetchError,
-    error,
-  } = useSuspenseQuery(timesheetsQuery(userId, audience));
-  const [announcement, setAnnouncement] = useState("");
+    entries,
+    totals,
+    scheduledHours,
+    refreshing,
+    refresh,
+    refreshError,
+    announcement,
+  } = useTimesheet(userId, audience);
   const copy = COPY[audience];
-  const totals = timesheetTotals(entries);
-  const scheduledHours = formatHours(totals.scheduledHours);
-
-  async function refreshFromButton() {
-    setAnnouncement("");
-    const result = await refetch();
-    if (!result.isError) setAnnouncement("Timesheet refreshed.");
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -84,17 +71,17 @@ export function Timesheet({ audience, userId }: { audience: Role; userId: string
           </div>
           <button
             type="button"
-            disabled={isFetching}
-            onClick={() => void refreshFromButton()}
+            disabled={refreshing}
+            onClick={() => void refresh()}
             className="flex h-11 items-center gap-2 rounded-control border border-input-border bg-surface px-4 font-medium hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshIcon />
-            {isFetching ? "Refreshing…" : "Refresh"}
+            {refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </header>
 
-      <RefreshError error={isRefetchError ? error : null} />
+      <RefreshError error={refreshError} />
 
       <p role="status" className="sr-only">
         {announcement}
@@ -146,7 +133,7 @@ export function Timesheet({ audience, userId }: { audience: Role; userId: string
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-4 text-sm text-text-muted sm:px-6">
           <p>
-            {assignedShiftCount(totals.assigned)}
+            {plural(totals.assigned, "assigned shift")}
             {totals.history > 0 ? ` · ${totals.history} cancelled or no-show` : ""}
           </p>
           <p>
