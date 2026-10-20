@@ -25,22 +25,70 @@ const boundary = (files, patterns, paths = []) => ({
   rules: { "no-restricted-imports": ["error", { paths, patterns }] },
 });
 
+const RENDER_ONLY =
+  "Views and components only render. Put state, effects, requests and mutations in a hook (ARCHITECTURE.md §4).";
+
+const renderOnlyPaths = [
+  {
+    name: "react",
+    importNames: [
+      "useState",
+      "useReducer",
+      "useRef",
+      "useEffect",
+      "useLayoutEffect",
+      "useInsertionEffect",
+      "useActionState",
+      "useTransition",
+      "useOptimistic",
+      "useSyncExternalStore",
+    ],
+    message: RENDER_ONLY,
+  },
+  {
+    name: "@tanstack/react-query",
+    importNames: [
+      "useQuery",
+      "useQueries",
+      "useInfiniteQuery",
+      "useSuspenseQuery",
+      "useSuspenseQueries",
+      "useSuspenseInfiniteQuery",
+      "useMutation",
+      "useQueryClient",
+    ],
+    message: RENDER_ONLY,
+  },
+  { name: "@/shared/client/api-client", message: RENDER_ONLY },
+];
+
+const renderOnlyPatterns = [forbid("actions", RENDER_ONLY)];
+
+// A later block replaces an earlier block's options for the same rule, so each
+// render-only block repeats the folder's boundary patterns.
+const boundaryWithRenderOnly = (files, renderOnlyFiles, patterns) => [
+  boundary(files, patterns),
+  boundary(renderOnlyFiles, [...patterns, ...renderOnlyPatterns], renderOnlyPaths),
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   ...pluginQuery.configs["flat/recommended"],
-  boundary(
+  ...boundaryWithRenderOnly(
     ["src/shared/**"],
+    ["src/shared/ui/**"],
     [
       ...frontendPatterns,
       forbid("features", "Shared code cannot import @/features."),
       forbidRelative(["features"], "Shared code cannot import features."),
     ],
   ),
-  ...FEATURES.map((name) => {
+  ...FEATURES.flatMap((name) => {
     const others = FEATURES.filter((other) => other !== name);
-    return boundary(
+    return boundaryWithRenderOnly(
       [`src/features/${name}/**`],
+      [`src/features/${name}/views/**`, `src/features/${name}/components/**`],
       [
         ...frontendPatterns,
         ...others.map((other) =>
