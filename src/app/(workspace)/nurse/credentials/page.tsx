@@ -1,11 +1,12 @@
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { Suspense } from "react";
 
 import { requireRole } from "@/server/auth/current-user";
-import { CredentialBanner } from "@/features/credentials/components/credential-banner";
-import { CredentialUploadForm } from "@/features/credentials/views/credential-upload-form";
-import { CurrentCredential } from "@/features/credentials/components/current-credential";
-import { getCredentialRecord } from "@/server/credentials/credential-service";
-import { getCredentialStatus, todayIsoDate } from "@/contracts/credentials/status";
+import { credentialQuery } from "@/features/credentials/queries/credential-query";
+import { CredentialWorkspace } from "@/features/credentials/views/credential-workspace";
+import { makeQueryClient } from "@/shared/client/query-client";
+import { getCredentialData } from "@/server/credentials/credential-service";
+import { todayIsoDate } from "@/contracts/credentials/status";
 
 export default function CredentialsPage() {
   return (
@@ -26,25 +27,24 @@ export default function CredentialsPage() {
       </header>
 
       <Suspense fallback={<p className="text-text-muted">Loading…</p>}>
-        <CredentialWorkspace />
+        <CredentialData />
       </Suspense>
     </div>
   );
 }
 
-async function CredentialWorkspace() {
+async function CredentialData() {
   const user = await requireRole("nurse");
-  const record = await getCredentialRecord(user.id);
-  const today = todayIsoDate();
-  const status = getCredentialStatus(record.expiresOn, today);
+
+  const queryClient = makeQueryClient();
+  await queryClient.fetchQuery({
+    ...credentialQuery(user.id),
+    queryFn: () => getCredentialData(user.id),
+  });
 
   return (
-    <>
-      <CredentialBanner status={status} />
-      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
-        <CredentialUploadForm today={today} />
-        <CurrentCredential status={status} document={record.document} />
-      </div>
-    </>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <CredentialWorkspace userId={user.id} today={todayIsoDate()} />
+    </HydrationBoundary>
   );
 }

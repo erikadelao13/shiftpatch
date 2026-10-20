@@ -1,16 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import type { Role } from "@/contracts/auth/types";
 import { StatCard } from "@/shared/ui/stat-card";
-import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { ClockIcon, RefreshIcon } from "@/shared/ui/icons";
+import { RefreshError } from "@/shared/ui/refresh-error";
 
 import { formatHours, timesheetTotals } from "@/features/timesheets/lib/hours";
-import type { TimesheetEntry } from "@/contracts/timesheets/types";
 import { TimesheetTable } from "../components/timesheet-table";
+import { timesheetsQuery } from "../queries/timesheets-query";
 
 function assignedShiftCount(count: number): string {
   return `${count} assigned ${count === 1 ? "shift" : "shifts"}`;
@@ -48,31 +49,23 @@ const COPY: Record<Role, Copy> = {
   },
 };
 
-export function Timesheet({ audience, entries }: { audience: Role; entries: TimesheetEntry[] }) {
-  const { refresh, refreshing } = useServerRefresh();
+export function Timesheet({ audience, userId }: { audience: Role; userId: string }) {
+  const {
+    data: entries,
+    refetch,
+    isFetching,
+    isRefetchError,
+    error,
+  } = useSuspenseQuery(timesheetsQuery(userId, audience));
   const [announcement, setAnnouncement] = useState("");
-  const refreshingRef = useRef(refreshing);
   const copy = COPY[audience];
   const totals = timesheetTotals(entries);
   const scheduledHours = formatHours(totals.scheduledHours);
 
-  useEffect(() => {
-    refreshingRef.current = refreshing;
-  }, [refreshing]);
-
-  useEffect(() => {
-    if (audience !== "admin") return;
-    function refreshOnReturn() {
-      if (document.visibilityState === "visible" && !refreshingRef.current) void refresh();
-    }
-    document.addEventListener("visibilitychange", refreshOnReturn);
-    return () => document.removeEventListener("visibilitychange", refreshOnReturn);
-  }, [audience, refresh]);
-
   async function refreshFromButton() {
     setAnnouncement("");
-    await refresh();
-    setAnnouncement("Timesheet refreshed.");
+    const result = await refetch();
+    if (!result.isError) setAnnouncement("Timesheet refreshed.");
   }
 
   return (
@@ -91,15 +84,17 @@ export function Timesheet({ audience, entries }: { audience: Role; entries: Time
           </div>
           <button
             type="button"
-            disabled={refreshing}
+            disabled={isFetching}
             onClick={() => void refreshFromButton()}
             className="flex h-11 items-center gap-2 rounded-control border border-input-border bg-surface px-4 font-medium hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshIcon />
-            {refreshing ? "Refreshing…" : "Refresh"}
+            {isFetching ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </header>
+
+      <RefreshError error={isRefetchError ? error : null} />
 
       <p role="status" className="sr-only">
         {announcement}

@@ -1,11 +1,12 @@
 "use client";
 
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { z } from "zod";
 
 import { formatDate } from "@/shared/lib/dates";
-import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { apiFetch } from "@/shared/client/api-client";
+import { queryKeys } from "@/shared/client/query-keys";
 import { DocumentIcon, LockIcon, UploadIcon } from "@/shared/ui/icons";
 
 import { PAST_EXPIRY_MESSAGE, formatFileSize } from "@/contracts/credentials/document";
@@ -26,8 +27,8 @@ function describedBy(...ids: (string | false)[]): string | undefined {
   return ids.filter(Boolean).join(" ") || undefined;
 }
 
-export function CredentialUploadForm({ today }: { today: string }) {
-  const { refresh } = useServerRefresh();
+export function CredentialUploadForm({ userId, today }: { userId: string; today: string }) {
+  const queryClient = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const expiryRef = useRef<HTMLInputElement>(null);
   const [formKey, setFormKey] = useState(0);
@@ -35,7 +36,11 @@ export function CredentialUploadForm({ today }: { today: string }) {
   const [dragging, setDragging] = useState(false);
   const [errors, setErrors] = useState<CredentialUploadErrors>({});
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [pending, setPending] = useState(false);
+  const upload = useMutation({
+    mutationFn: (body: FormData) => apiFetch("/api/credentials", { method: "POST", body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.credential(userId) }),
+  });
+  const pending = upload.isPending;
 
   useLayoutEffect(() => {
     return () => setNotice(null);
@@ -88,10 +93,8 @@ export function CredentialUploadForm({ today }: { today: string }) {
 
     setErrors({});
     setNotice(null);
-    setPending(true);
     try {
-      await apiFetch("/api/credentials", { method: "POST", body: data });
-      await refresh();
+      await upload.mutateAsync(data);
       setFormKey((key) => key + 1);
       setSelected(null);
       setNotice({
@@ -103,8 +106,6 @@ export function CredentialUploadForm({ today }: { today: string }) {
         kind: "error",
         message: error instanceof Error ? error.message : "Could not save your credential.",
       });
-    } finally {
-      setPending(false);
     }
   }
 

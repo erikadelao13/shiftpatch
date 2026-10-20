@@ -1,36 +1,35 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 
 import { apiFetch } from "@/shared/client/api-client";
+import { queryKeys } from "@/shared/client/query-keys";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
 import { formatDate } from "@/shared/lib/dates";
 import { summarize } from "@/features/shifts/lib/schedule";
 import type { NewShiftInput } from "@/contracts/shifts/schemas";
-import { useServerRefresh } from "@/shared/client/use-server-refresh";
-import type { AgencyShift, CancellationReason, ShiftDTO } from "@/contracts/shifts/types";
+import type { CancellationReason, ShiftDTO } from "@/contracts/shifts/types";
 import { PostShiftDialog } from "../components/post-shift-dialog";
 import { ReopenShiftDialog, type ReopenTarget } from "../components/reopen-shift-dialog";
 import { ShiftsTable } from "../components/shifts-table";
 import { StatusTabs, type StatusTab, type TabKey } from "../components/status-tabs";
 import { SummaryCards } from "../components/summary-cards";
+import { agencyBoardQuery } from "../queries/agency-board-query";
 
 type ShiftBoardProps = {
+  userId: string;
   agencyName: string;
-  shifts: AgencyShift[];
 };
 
-export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
-  const router = useRouter();
-  const [refreshing, startRefresh] = useTransition();
-  const awaitedShift = useRef<{ id: string; resolve: () => void } | null>(null);
+export function ShiftBoard({ userId, agencyName }: ShiftBoardProps) {
+  const queryClient = useQueryClient();
+  const { data: shifts } = useSuspenseQuery(agencyBoardQuery(userId));
   const [postOpen, setPostOpen] = useState(false);
   const [tab, setTab] = useState<TabKey>("all");
   const [notice, setNotice] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ReopenTarget | null>(null);
-  const { refresh } = useServerRefresh();
   const postButtonRef = useRef<HTMLButtonElement>(null);
 
   const summary = summarize(shifts);
@@ -42,40 +41,34 @@ export function ShiftBoard({ agencyName, shifts }: ShiftBoardProps) {
   const activeTab = tabs.some((item) => item.key === tab) ? tab : "all";
   const visible = shifts.filter((shift) => activeTab === "all" || shift.status === activeTab);
 
-  useEffect(() => {
-    const awaited = awaitedShift.current;
-    if (!awaited) return;
-    if (shifts.some((shift) => shift.id === awaited.id) || !refreshing) {
-      awaitedShift.current = null;
-      awaited.resolve();
-    }
-  }, [shifts, refreshing]);
+  const post = useMutation({
+    mutationFn: (input: NewShiftInput) =>
+      apiFetch<ShiftDTO>("/api/shifts", { method: "POST", body: JSON.stringify(input) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.agencyBoard(userId) }),
+  });
+
+  const cancel = useMutation({
+    mutationFn: ({ shift, reason }: { shift: ReopenTarget; reason: CancellationReason }) =>
+      apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.agencyBoard(userId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.timesheets(userId) }),
+      ]),
+  });
 
   async function postShift(input: NewShiftInput) {
-    const created = await apiFetch<ShiftDTO>("/api/shifts", {
-      method: "POST",
-      body: JSON.stringify(input),
-    });
-    await new Promise<void>((resolve) => {
-      awaitedShift.current = { id: created.id, resolve };
-      startRefresh(() => router.refresh());
-    });
+    await post.mutateAsync(input);
     setTab("all");
     setNotice("Shift posted");
   }
 
   async function cancelAssignment(shift: ReopenTarget, reason: CancellationReason) {
     setNotice(null);
-    try {
-      await apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/cancel`, {
-        method: "POST",
-        body: JSON.stringify({ reason }),
-      });
-    } catch (failure) {
-      await refresh();
-      throw failure;
-    }
-    await refresh();
+    await cancel.mutateAsync({ shift, reason });
     const prefix = reason === "no-show" ? "No-show reported" : "Assignment cancelled";
     setNotice(
       `${prefix}: ${shift.nurseName ?? "The nurse"} was unassigned from the ${shift.role} shift on ${formatDate(shift.date)}. The shift is open again.`,

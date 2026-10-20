@@ -1,45 +1,34 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { RefreshIcon, ShieldCheckIcon } from "@/shared/ui/icons";
+import { RefreshError } from "@/shared/ui/refresh-error";
 
 import { summarize } from "@/features/shifts/lib/schedule";
-import { useServerRefresh } from "@/shared/client/use-server-refresh";
-import type { AdminShift, AgencyOption } from "@/contracts/shifts/types";
 import { AdminShiftsTable } from "../components/admin-shifts-table";
 import { ALL, FilterSelect } from "../components/filter-select";
 import { StatusTabs, type StatusTab, type TabKey } from "../components/status-tabs";
 import { SummaryCards } from "../components/summary-cards";
+import { adminBoardQuery } from "../queries/admin-board-query";
 
-type AdminShiftOverviewProps = {
-  agencies: AgencyOption[];
-  shifts: AdminShift[];
-};
-
-export function AdminShiftOverview({ agencies, shifts }: AdminShiftOverviewProps) {
-  const { refresh, refreshing } = useServerRefresh();
+export function AdminShiftOverview({ userId }: { userId: string }) {
+  const {
+    data: { agencies, shifts },
+    refetch,
+    isFetching,
+    isRefetchError,
+    error,
+  } = useSuspenseQuery(adminBoardQuery(userId));
   const [agencyId, setAgencyId] = useState(ALL);
   const [tab, setTab] = useState<TabKey>("all");
   const [announcement, setAnnouncement] = useState("");
-  const refreshingRef = useRef(refreshing);
-
-  useEffect(() => {
-    refreshingRef.current = refreshing;
-  }, [refreshing]);
-
-  useEffect(() => {
-    function refreshOnReturn() {
-      if (document.visibilityState === "visible" && !refreshingRef.current) void refresh();
-    }
-    document.addEventListener("visibilitychange", refreshOnReturn);
-    return () => document.removeEventListener("visibilitychange", refreshOnReturn);
-  }, [refresh]);
 
   async function refreshFromButton() {
     setAnnouncement("");
-    await refresh();
-    setAnnouncement("Shift overview refreshed.");
+    const result = await refetch();
+    if (!result.isError) setAnnouncement("Shift overview refreshed.");
   }
 
   const activeAgency = agencies.some((agency) => agency.id === agencyId) ? agencyId : ALL;
@@ -71,15 +60,17 @@ export function AdminShiftOverview({ agencies, shifts }: AdminShiftOverviewProps
           </div>
           <button
             type="button"
-            disabled={refreshing}
+            disabled={isFetching}
             onClick={() => void refreshFromButton()}
             className="flex h-11 items-center gap-2 rounded-control border border-input-border bg-surface px-4 font-medium hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshIcon />
-            {refreshing ? "Refreshing…" : "Refresh"}
+            {isFetching ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </header>
+
+      <RefreshError error={isRefetchError ? error : null} />
 
       <p role="status" className="sr-only">
         {announcement}

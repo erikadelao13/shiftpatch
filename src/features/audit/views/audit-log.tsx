@@ -1,38 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
-import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { ClockIcon, LockIcon, RefreshIcon } from "@/shared/ui/icons";
+import { RefreshError } from "@/shared/ui/refresh-error";
 
-import type { AuditEntry } from "@/contracts/audit/types";
 import { AuditLogTable } from "../components/audit-log-table";
+import { auditQuery } from "../queries/audit-query";
 
 function eventCount(count: number): string {
   return `${count} ${count === 1 ? "event" : "events"}`;
 }
 
-export function AuditLog({ entries, total }: { entries: AuditEntry[]; total: number }) {
-  const { refresh, refreshing } = useServerRefresh();
+export function AuditLog({ userId }: { userId: string }) {
+  const {
+    data: { entries, total },
+    refetch,
+    isFetching,
+    isRefetchError,
+    error,
+  } = useSuspenseQuery(auditQuery(userId));
   const [announcement, setAnnouncement] = useState("");
-  const refreshingRef = useRef(refreshing);
-
-  useEffect(() => {
-    refreshingRef.current = refreshing;
-  }, [refreshing]);
-
-  useEffect(() => {
-    function refreshOnReturn() {
-      if (document.visibilityState === "visible" && !refreshingRef.current) void refresh();
-    }
-    document.addEventListener("visibilitychange", refreshOnReturn);
-    return () => document.removeEventListener("visibilitychange", refreshOnReturn);
-  }, [refresh]);
 
   async function refreshFromButton() {
     setAnnouncement("");
-    await refresh();
-    setAnnouncement("Audit log refreshed.");
+    const result = await refetch();
+    if (!result.isError) setAnnouncement("Audit log refreshed.");
   }
 
   return (
@@ -53,15 +47,17 @@ export function AuditLog({ entries, total }: { entries: AuditEntry[]; total: num
           </div>
           <button
             type="button"
-            disabled={refreshing}
+            disabled={isFetching}
             onClick={() => void refreshFromButton()}
             className="flex h-11 items-center gap-2 rounded-control border border-input-border bg-surface px-4 font-medium hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshIcon />
-            {refreshing ? "Refreshing…" : "Refresh"}
+            {isFetching ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </header>
+
+      <RefreshError error={isRefetchError ? error : null} />
 
       <p role="status" className="sr-only">
         {announcement}

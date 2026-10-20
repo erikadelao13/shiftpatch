@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Logo } from "./logo";
 import { SignOutIcon } from "./icons";
+import { SignOutForm } from "./sign-out-form";
 
 type SidebarProps = {
   workspaceName: string;
@@ -50,7 +51,7 @@ export function Sidebar({
           <p className="text-sm font-medium leading-snug">{userName}</p>
           <p className="text-sm text-on-brand/70">{roleLabel}</p>
         </div>
-        <form action={signOutAction}>
+        <SignOutForm action={signOutAction}>
           <button
             type="submit"
             data-testid="sign-out-button"
@@ -60,7 +61,7 @@ export function Sidebar({
           >
             <SignOutIcon />
           </button>
-        </form>
+        </SignOutForm>
       </div>
     </aside>
   );

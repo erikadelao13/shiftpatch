@@ -1,21 +1,22 @@
 "use client";
 
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { apiFetch } from "@/shared/client/api-client";
+import { queryKeys } from "@/shared/client/query-keys";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
 import { formatDate } from "@/shared/lib/dates";
-import { useServerRefresh } from "@/shared/client/use-server-refresh";
 import { SHIFT_ROLES, type MarketplaceShift, type ShiftDTO } from "@/contracts/shifts/types";
 import { ALL, FilterSelect } from "../components/filter-select";
 import { MyShiftsTable } from "../components/my-shifts-table";
 import { OpenShiftsTable } from "../components/open-shifts-table";
 import { ReopenShiftDialog, type ReopenTarget } from "../components/reopen-shift-dialog";
+import { marketplaceQuery } from "../queries/marketplace-query";
 
 type MarketplaceProps = {
-  openShifts: MarketplaceShift[];
-  myShifts: MarketplaceShift[];
+  userId: string;
   banner: ReactNode;
 };
 
@@ -25,11 +26,14 @@ function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-export function Marketplace({ openShifts, myShifts, banner }: MarketplaceProps) {
-  const { refresh, refreshing } = useServerRefresh();
+export function Marketplace({ userId, banner }: MarketplaceProps) {
+  const queryClient = useQueryClient();
+  const {
+    data: { openShifts, myShifts },
+    isFetching,
+  } = useSuspenseQuery(marketplaceQuery(userId));
   const [agency, setAgency] = useState(ALL);
   const [role, setRole] = useState(ALL);
-  const [claimingId, setClaimingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [cancelTarget, setCancelTarget] = useState<ReopenTarget | null>(null);
 
@@ -40,11 +44,34 @@ export function Marketplace({ openShifts, myShifts, banner }: MarketplaceProps) 
   );
   const filtering = agency !== ALL || role !== ALL;
 
+  const claimMutation = useMutation({
+    mutationFn: (shift: MarketplaceShift) =>
+      apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/claim`, { method: "POST" }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.marketplace(userId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.timesheets(userId) });
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (shift: ReopenTarget) =>
+      apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "advance" }),
+      }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.marketplace(userId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.timesheets(userId) }),
+      ]),
+  });
+
+  const claimingId = claimMutation.isPending ? claimMutation.variables.id : null;
+
   async function claim(shift: MarketplaceShift) {
     setNotice(null);
-    setClaimingId(shift.id);
     try {
-      await apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/claim`, { method: "POST" });
+      await claimMutation.mutateAsync(shift);
       setNotice({
         kind: "success",
         message: `Shift claimed: ${shift.role} on ${formatDate(shift.date)} with ${shift.agencyName}`,
@@ -54,24 +81,12 @@ export function Marketplace({ openShifts, myShifts, banner }: MarketplaceProps) 
         kind: "error",
         message: error instanceof Error ? error.message : "Could not claim this shift.",
       });
-    } finally {
-      setClaimingId(null);
-      void refresh();
     }
   }
 
   async function cancelAssignment(shift: ReopenTarget) {
     setNotice(null);
-    try {
-      await apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/cancel`, {
-        method: "POST",
-        body: JSON.stringify({ reason: "advance" }),
-      });
-    } catch (failure) {
-      await refresh();
-      throw failure;
-    }
-    await refresh();
+    await cancelMutation.mutateAsync(shift);
     setNotice({
       kind: "success",
       message: `Assignment cancelled: ${shift.role} on ${formatDate(shift.date)} with ${shift.agencyName}. The shift is open again.`,
@@ -175,7 +190,7 @@ export function Marketplace({ openShifts, myShifts, banner }: MarketplaceProps) 
             <OpenShiftsTable
               shifts={filtered}
               claimingId={claimingId}
-              busy={claimingId !== null || refreshing}
+              busy={claimMutation.isPending || isFetching}
               onClaim={claim}
             />
           )}

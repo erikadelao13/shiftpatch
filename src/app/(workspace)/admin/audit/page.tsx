@@ -1,8 +1,11 @@
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { Suspense } from "react";
 
 import { AuditLog } from "@/features/audit/views/audit-log";
+import { auditQuery } from "@/features/audit/queries/audit-query";
 import { listAuditEntries } from "@/server/audit/audit-service";
 import { requireRole } from "@/server/auth/current-user";
+import { makeQueryClient } from "@/shared/client/query-client";
 
 export default function AuditPage() {
   return (
@@ -13,9 +16,14 @@ export default function AuditPage() {
 }
 
 async function AuditWorkspace() {
-  await requireRole("admin");
+  const user = await requireRole("admin");
 
-  const { entries, total } = await listAuditEntries();
+  const queryClient = makeQueryClient();
+  await queryClient.fetchQuery({ ...auditQuery(user.id), queryFn: () => listAuditEntries() });
 
-  return <AuditLog entries={entries} total={total} />;
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <AuditLog userId={user.id} />
+    </HydrationBoundary>
+  );
 }
