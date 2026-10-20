@@ -289,7 +289,7 @@ test.describe("the admin shift overview", () => {
     const row = page.getByRole("row", { name: /Sep 2, 2027/ });
     await expect(row).toHaveCount(0);
 
-    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
     await expect(row).toBeVisible();
     await expect(page.getByRole("status")).toHaveText("");
   });

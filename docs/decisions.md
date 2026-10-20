@@ -232,6 +232,18 @@ Agent defaults from the feature-folders plan, not yet reviewed by the owner:
 - **No `hooks/` folder, no `use-shift-actions`.** `shift-board` and `marketplace` share only the `apiFetch` call and refresh-on-failure. Their notice types differ (a string against `{ kind, message }`), their cancel reasons differ (a variable against a fixed `"advance"`), and post exists only in the board and claim only in the marketplace. A hook would need options for each difference.
 - **ESLint generates one `no-restricted-imports` block per feature** from a list of names, refusing `@/features/<other>/**` and relative paths that climb into another feature. `shared` also cannot import `@/features`. Adding a feature means adding its name to the list in `eslint.config.mjs`.
 
+### 2026-10-19: TanStack Query for browser server-state
+
+Owner decision (full scope), with agent defaults for the open details from the data-layer plan:
+
+- **Supersedes** "TanStack Query is deferred" (2026-10-17) and the 2026-10-18 rejection of `GET /api/timesheets`. Queries and mutations both move to TanStack Query (`@tanstack/react-query` 5.104.5). Server Components still render first and seed the cache through `<HydrationBoundary>`.
+- **Six new same-origin GET routes** serve the view-shaped data: `/api/agency/board`, `/api/nurse/marketplace`, `/api/admin/board`, `/api/audit`, `/api/timesheets`, `/api/credentials`. The six spec-required routes are unchanged.
+- **Defaults:** `staleTime` 30 s, `retry: false`, no focus or reconnect refetch, no interval. Admin queries refetch on tab return (`refetchOnWindowFocus: "always"`).
+- **Keys start with the user ID** and live in `src/shared/client/query-keys.ts`; `queryOptions` live in `src/features/<module>/queries/`. Mutations stay inline in the views.
+- **A failed refresh keeps the rows** and shows the error in a `role="alert"` (DESIGN "Refreshing"); initial-load failures still reach `error.tsx`.
+- **Tooling:** `@tanstack/eslint-plugin-query` as a devDependency; no Devtools.
+- **No optimistic updates and no polling**, as PRODUCT requires.
+
 ## Open items
 
 - Whether the Neon `dev` branch was created with the default 7-day TTL from `neon.ts` is unconfirmed. This repository treats `dev` as durable.

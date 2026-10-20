@@ -1,10 +1,13 @@
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import { Suspense } from "react";
 
 import { requireRole } from "@/server/auth/current-user";
-import { getCredentialExpiry } from "@/server/credentials/credential-service";
-import { getCredentialStatus, todayIsoDate } from "@/contracts/credentials/status";
-import { CredentialBanner } from "@/features/credentials/components/credential-banner";
+import { credentialQuery } from "@/features/credentials/queries/credential-query";
+import { CredentialStatus } from "@/features/credentials/views/credential-status";
+import { marketplaceQuery } from "@/features/shifts/queries/marketplace-query";
 import { Marketplace } from "@/features/shifts/views/marketplace";
+import { makeQueryClient } from "@/shared/client/query-client";
+import { getCredentialData } from "@/server/credentials/credential-service";
 import { getNurseMarketplace } from "@/server/shifts/shift-service";
 
 export default function NursePage() {
@@ -17,16 +20,16 @@ export default function NursePage() {
 
 async function NurseWorkspace() {
   const user = await requireRole("nurse");
-  const [{ openShifts, myShifts }, expiresOn] = await Promise.all([
-    getNurseMarketplace(user.id),
-    getCredentialExpiry(user.id),
+
+  const queryClient = makeQueryClient();
+  await Promise.all([
+    queryClient.fetchQuery({ ...marketplaceQuery(user.id), queryFn: () => getNurseMarketplace(user.id) }),
+    queryClient.fetchQuery({ ...credentialQuery(user.id), queryFn: () => getCredentialData(user.id) }),
   ]);
 
   return (
-    <Marketplace
-      openShifts={openShifts}
-      myShifts={myShifts}
-      banner={<CredentialBanner status={getCredentialStatus(expiresOn, todayIsoDate())} />}
-    />
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <Marketplace userId={user.id} banner={<CredentialStatus userId={user.id} />} />
+    </HydrationBoundary>
   );
 }

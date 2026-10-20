@@ -8,7 +8,7 @@ import { HttpError } from "@/server/errors";
 
 import { DOCUMENT_MIME_TYPES, PAST_EXPIRY_MESSAGE, cleanFileName, detectDocumentType } from "@/contracts/credentials/document";
 import { getCredentialStatus, todayIsoDate } from "@/contracts/credentials/status";
-import type { CredentialDocumentSummary, CredentialDTO, CredentialRecord } from "@/contracts/credentials/types";
+import type { CredentialData, CredentialDocumentSummary, CredentialDTO, CredentialRecord } from "@/contracts/credentials/types";
 
 const isoDate = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -53,6 +53,14 @@ export async function getCredentialRecord(nurseId: string): Promise<CredentialRe
   return {
     expiresOn: isoDate(credential.expiresOn),
     document: credential.document ? toDocumentSummary(credential.document) : null,
+  };
+}
+
+export async function getCredentialData(nurseId: string): Promise<CredentialData> {
+  const record = await getCredentialRecord(nurseId);
+  return {
+    status: getCredentialStatus(record.expiresOn, todayIsoDate()),
+    document: record.document,
   };
 }
 

@@ -3,7 +3,7 @@ import "server-only";
 import { HttpError } from "@/server/errors";
 
 import { SESSION_COOKIE } from "./constants";
-import type { Actor } from "@/contracts/auth/types";
+import type { Actor, Role } from "@/contracts/auth/types";
 import { resolveSession } from "./sessions";
 import { verifyToken } from "./token";
 
@@ -77,4 +77,14 @@ export async function requireSession(
 
 export async function requireActor(request: Request): Promise<Actor> {
   return (await requireSession(request)).actor;
+}
+
+export async function requireActorRole(
+  request: Request,
+  role: Role,
+  forbiddenMessage: string,
+): Promise<Actor> {
+  const actor = await requireActor(request);
+  if (actor.role !== role) throw new HttpError(403, forbiddenMessage);
+  return actor;
 }

@@ -1,6 +1,6 @@
 # ShiftPatch Architecture
 
-> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). the timesheet views for all three roles, derived from `Shift` and `Cancellation` with no recorded work (§5, §9). A `Timesheet` model and `GET /api/timesheets` were decided against on 2026-10-18. CI on GitHub Actions and the Vercel deployment at <https://shiftpatch-tau.vercel.app> (§11, §12).
+> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). the timesheet views for all three roles, derived from `Shift` and `Cancellation` with no recorded work (§5, §9). A `Timesheet` model was decided against on 2026-10-18. Browser server-state moved to TanStack Query on 2026-10-19 (§2, §4), which added six view-shaped GET routes (§7), including `GET /api/timesheets`. CI on GitHub Actions and the Vercel deployment at <https://shiftpatch-tau.vercel.app> (§11, §12).
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
@@ -24,7 +24,7 @@ This is a design for the assessment, not evidence of production healthcare compl
 | HTTP API | Route Handlers under `src/app/api`, Node.js runtime | Preserve the exact externally tested routes |
 | Code organization | `src/features/` (frontend only, split into `views/`, `components/`, `hooks/` and `lib/`), `src/server/`, `src/contracts/`, `src/actions/`, `src/shared/` | The frontend cannot import server code, and ESLint enforces it (§3) |
 | Styling | Tailwind CSS with reusable accessible primitives | Consistent UI with limited setup |
-| Client server-state | Proposal: TanStack Query, deferred until a view needs polling or cross-view invalidation. The agency board renders on the server and refreshes with `router.refresh()` after a mutation, through a small same-origin API client. The admin shift overview is also a Server Component: it refreshes through `useServerRefresh` from its Refresh button and when the browser tab becomes visible again, with no timer | Request lifecycle, mutation state, and query invalidation once more than one view shares shift data |
+| Client server-state | **Implemented (2026-10-19):** TanStack Query (`@tanstack/react-query` 5.x). Each page's Server Component fetches its query on the server and seeds the browser cache through `<HydrationBoundary>`; views read it with `useSuspenseQuery` and write with `useMutation`, which invalidates the affected keys. `apiFetch` is the transport inside every `queryFn` and `mutationFn`. Defaults: `staleTime` 30 s, no retry, no focus or reconnect refetch and no interval. Admin queries refetch when the tab returns to visible; the Refresh buttons call `refetch()`. No optimistic updates | Request lifecycle, mutation state, and query invalidation across views that share shift data |
 | Persistence | Neon Postgres through Prisma | Persistent hosted data, migrations, and transactional writes |
 | Validation | Zod at HTTP boundaries | Validate untrusted input at runtime |
 | Authentication | Self-managed: `node:crypto` scrypt password hashes, HS256 JWTs signed with `jose`, revocable `ApiSession` rows | One token serves both the required email/password-to-token endpoint and the browser, with no second identity provider (§7, `docs/decisions.md`) |
@@ -146,24 +146,30 @@ src/
       components/               # implemented: login form
     shifts/
       views/                    # implemented: client screens that own state and call the API: shift-board, marketplace, admin-shift-overview
+      queries/                  # implemented: queryOptions for the agency board, marketplace and admin board
       components/               # implemented: presentational tables, badges, tabs and the post and reopen dialogs
       lib/                      # implemented: schedule (summarize, formatTimeRange, compareShifts) and its test
     credentials/
-      views/                    # implemented: credential-upload-form
+      views/                    # implemented: credential-workspace, credential-status, credential-upload-form
+      queries/                  # implemented: credential query
       components/               # implemented: credential banner, current credential card
     audit/
       views/                    # implemented: audit-log
+      queries/                  # implemented: audit query
       components/               # implemented: audit-log-table
       lib/                      # implemented: describe-event (action labels and details) and its test
     timesheets/
       views/                    # implemented: timesheet
+      queries/                  # implemented: timesheets query
       components/               # implemented: timesheet-table
       lib/                      # implemented: hours (formatHours, totalScheduledHours, timesheetTotals) and its test
   shared/
-    ui/                         # implemented: icons, logo, sidebar, stat-card
+    ui/                         # implemented: icons, logo, sidebar, sign-out-form, refresh-error, stat-card
     lib/                        # implemented: dates (formatDate) and shift-time (endsNextDay, durationHours, formatEndsOn), with tests
     client/api-client.ts        # implemented: apiFetch
-    client/use-server-refresh.ts # implemented: refreshes Server Component data (router.refresh)
+    client/query-client.ts      # implemented: makeQueryClient (defaults)
+    client/query-provider.tsx   # implemented: QueryProvider, one client per server render and one in the browser
+    client/query-keys.ts        # implemented: key factories, each starting with the user ID
 prisma.config.ts                # implemented
 prisma/
   schema.prisma
@@ -185,7 +191,7 @@ The six required API routes are fixed. All other routes listed above are propose
 ### Dependency rules
 
 - `app/` composes features and adapts framework requests; features never import from `app/`.
-- Within a feature, `views/` may use `components/`, `hooks/` and `lib/`, `@/contracts`, `@/actions` and `@/shared`. `components/` stays presentational: no `apiFetch`, no server calls. `lib/` holds UI-only pure helpers with no React and no I/O. `hooks/` appears only when two views share state or mutation logic; none exists yet.
+- Within a feature, `views/` may use `components/`, `hooks/` and `lib/`, `@/contracts`, `@/actions` and `@/shared`. `components/` stays presentational: no `apiFetch`, no server calls. `lib/` holds UI-only pure helpers with no React and no I/O. `hooks/` appears only when two views share state or mutation logic; none exists yet. `queries/` holds `queryOptions` factories: the key from `@/shared/client/query-keys` and the browser `queryFn` (`apiFetch`). A view calls them with `useSuspenseQuery`, and an `app/` page spreads them with a server `queryFn` for the prefetch. Components never import them.
 - Server services depend on explicit actor/context inputs, policies, and persistence functions.
 - Contracts depend on nothing but other contracts and libraries.
 - Shared modules remain feature-independent. Avoid turning `shared/` into a collection of unrelated business rules.
@@ -202,9 +208,9 @@ Each feature owns its views, components and UI helpers. Its input schemas and pu
 | State | Owner |
 | --- | --- |
 | Dialog open state, selected cancellation reason, form fields | Local React state |
-| Agency shift list | Server Component props, refreshed with `router.refresh()` after a post (proposal: feature query hooks once polling or cross-view invalidation is needed) |
+| Agency board, nurse marketplace, admin board, credential record | TanStack Query cache, seeded by the page's Server Component and invalidated by the mutations that affect it |
 | Application user profile | Feature query hooks |
-| Audit rows, timesheet entries | Server Component props, refreshed with `useServerRefresh` |
+| Audit rows, timesheet entries | TanStack Query cache, seeded by the page and refetched by the Refresh button (admin pages also on tab return) |
 | Roles, ownership, expiry, shift assignment | Server and database |
 | Browser sign-in/session lifecycle | The `shiftpatch_session` HttpOnly cookie, set by the `signIn` Server Action; the `ApiSession` row on the server |
 | API token | Returned in the body of `POST /api/auth/login` to direct API callers. The browser holds the same kind of token only in the HttpOnly cookie; page JavaScript never receives it |
@@ -214,7 +220,7 @@ Use Server Components for page shells and session-aware entry points; put forms,
 
 The login form keeps the required test IDs on real controls (`login-email-input`, `login-password-input`, `login-submit-button`), and failures render in `notification-banner`. With `cacheComponents` enabled, every session read sits behind `<Suspense>` so the static shell can still prerender.
 
-Scope query keys by actor and resource. Clear user-specific query state at logout/account changes. After posting, claiming, cancelling, or uploading a credential, invalidate the affected queries. Refetch the visible admin dashboard on focus and at a modest interval; label it as periodically refreshed rather than claiming push-based real-time delivery. **Implemented (2026-10-18):** the admin overview re-renders its server data from a Refresh button and on `visibilitychange` to visible, with no interval and no TanStack Query; the agency filter and tab are client state and survive a refresh. `getAdminBoard()` (every shift with agency and nurse names, in schedule order) and `listAgencies()` (by name) in `shift-service.ts` take no actor, like `getAgencyBoard`; the page's `requireRole("admin")` authorizes. No new API route: `GET /api/shifts` already serves the cross-agency list.
+Scope query keys by actor and resource. Clear user-specific query state at logout/account changes. After posting, claiming, cancelling, or uploading a credential, invalidate the affected queries. Refetch the visible admin dashboard on focus; PRODUCT requires no timer, so there is no interval. **Implemented (2026-10-19):** keys start with the user ID (`query-keys.ts`), and the sidebar's sign-out form (`shared/ui/sign-out-form.tsx`) calls `queryClient.clear()` before the `signOut` action, not in a provider-unmount effect, which React Strict Mode would run on the freshly hydrated cache. Invalidation map: posting invalidates `agencyBoard` (awaited, so "Posting…" lasts until the new row renders); an agency cancel or no-show invalidates `agencyBoard` and `timesheets` (awaited, also on failure); a nurse claim invalidates `marketplace` and `timesheets` (not awaited, the table stays busy while it refetches); a nurse cancel invalidates the same two (awaited, also on failure); a credential upload invalidates `credential` (awaited). The admin queries set `refetchOnWindowFocus: "always"`, so returning to the tab refetches inside `staleTime`; TanStack Query's `focusManager` listens for `visibilitychange` on `window`, so a synthetic event must bubble. A failed refetch keeps the rows and shows its message in a `role="alert"` (`RefreshError`); a failed initial read still reaches `error.tsx`. Server prefetch uses `fetchQuery`, which throws, with a server `queryFn` over the same service call the route uses. The agency filter and tab are client state and survive a refetch. `getAdminBoard()` (every shift with agency and nurse names, in schedule order) and `listAgencies()` (by name) in `shift-service.ts` take no actor, like `getAgencyBoard`; the page's `requireRole("admin")` authorizes. `GET /api/admin/board` serves the same data to the browser (§7).
 
 Show loading, empty, success, and error states. Disable duplicate submission while a mutation is pending, but keep server concurrency protection. Reconcile from the server response before displaying a completed claim.
 
@@ -358,6 +364,14 @@ Every protected Route Handler calls `requireActor(request)` (or `requireSession(
 | --- | --- |
 | `GET /api/auth/me` | `200 { user: { id, name, role, agencyId } }` for a valid caller |
 | `POST /api/auth/logout` | Revokes the caller's session and returns `204`. Clears the cookie when the request was cookie-authenticated |
+| `GET /api/agency/board` | Agency only, from the session's own agency. `200 { shifts: AgencyShift[] }`; `403` for another role or an account with no agency |
+| `GET /api/nurse/marketplace` | Nurse only. `200 { openShifts, myShifts }` |
+| `GET /api/admin/board` | Admin only. `200 { agencies, shifts }` |
+| `GET /api/audit` | Admin only. `200 { entries, total }`, the newest 50 events |
+| `GET /api/timesheets` | Any role, scoped by role (nurse's own, agency's own, all for the admin). `200 { entries }` |
+| `GET /api/credentials` | Nurse only. `200 { status, document }`, with the status computed on the server |
+
+The six GET routes added on 2026-10-19 serve the browser's queries. They send `Cache-Control: no-store`, answer `401` without a session and `403` for the wrong role (`requireActorRole` in `request-auth.ts`), and are thin adapters over the services the pages call. `e2e/views-api.spec.ts` covers them.
 
 Server-side authorization remains mandatory even after authentication and page/layout checks [N2].
 
@@ -434,7 +448,7 @@ Record actual successful business events, with actor, resource, action, and time
 
 Deliver a real view of assignments and submission state. Distinguish planned duration from recorded work. Editing/approval/payroll workflows are deferred unless the core delivery is complete. Display a clear empty state when there are no entries; do not create fictional worked hours.
 
-**Implemented (2026-10-18): timesheet views for every role.** `/nurse/timesheets`, `/agency/timesheets` and `/admin/timesheets` each authorize with `requireRole` and render one `timesheet-table` from `listTimesheetEntries(scope)`: the nurse's own rows (`claimedById` and `previousNurseId`), the agency's own (`agencyId`), or all of them. The service takes a scope, not an actor; each page builds it from the user `requireRole` returns. It runs two queries, filled `Shift` rows and `Cancellation` rows, with nested selects, and `toTimesheetEntries` merges them. Every `Cancellation` row is a history row (state `cancelled` for `advance`, `no-show` for `no_show`) that keeps the previous nurse's name and never counts toward the assigned count or scheduled hours. Order: date, start time, shift `createdAt`, shift ID, then a shift's cancellations oldest first before its current assignment. Planned hours come from `durationHours` (overnight aware); worked hours read "Not recorded" on every row because there is no `Timesheet` row. There is no `GET /api/timesheets`, no paging and no date range, so the admin and agency lists are unbounded (TD-17). A failed load shows the route's `error.tsx`.
+**Implemented (2026-10-18): timesheet views for every role.** `/nurse/timesheets`, `/agency/timesheets` and `/admin/timesheets` each authorize with `requireRole` and render one `timesheet-table` from `listTimesheetEntries(scope)`: the nurse's own rows (`claimedById` and `previousNurseId`), the agency's own (`agencyId`), or all of them. The service takes a scope, not an actor; each page builds it from the user `requireRole` returns. It runs two queries, filled `Shift` rows and `Cancellation` rows, with nested selects, and `toTimesheetEntries` merges them. Every `Cancellation` row is a history row (state `cancelled` for `advance`, `no-show` for `no_show`) that keeps the previous nurse's name and never counts toward the assigned count or scheduled hours. Order: date, start time, shift `createdAt`, shift ID, then a shift's cancellations oldest first before its current assignment. Planned hours come from `durationHours` (overnight aware); worked hours read "Not recorded" on every row because there is no `Timesheet` row. Since 2026-10-19 `GET /api/timesheets` serves the same scope to the browser's query. There is no paging and no date range, so the admin and agency lists are unbounded (TD-17). A failed load shows the route's `error.tsx`.
 
 ## 10. Required UI automation surface
 
