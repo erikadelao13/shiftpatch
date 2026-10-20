@@ -382,7 +382,7 @@ Mobile shift cards retain department, facility, date, time, rate, nurse, status,
 ## 11. Loading, empty, and error states
 
 - Initial loading: skeletons matching the final KPI and table geometry; do not briefly display zero counts.
-- Refreshing: preserve existing content, show a subtle loading indication, and mark stale data if the refresh fails.
+- Refreshing: preserve existing content, show a subtle loading indication, and mark stale data if the refresh fails. **Implemented (2026-10-19):** the admin overview, audit log and the three timesheet pages keep their rows when a refetch fails, skip the "…refreshed." announcement and show the message (the server's, or "Could not reach the server. Check your connection and try again.") in a `role="alert"` above the content. A failed first load still shows the route's `error.tsx`.
 - No shifts: “No shifts in this period.” Show “Post a shift” for authorized agency users.
 - Filtered empty state: “No shifts match these filters.” Provide “Clear filters”.
 - Data fetch failure: clear inline error with Retry; do not render failed data as an empty successful result.
