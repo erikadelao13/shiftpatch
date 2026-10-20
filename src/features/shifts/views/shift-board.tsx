@@ -1,22 +1,14 @@
 "use client";
 
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useRef, useState } from "react";
-
-import { apiFetch } from "@/shared/client/api-client";
-import { queryKeys } from "@/shared/client/query-keys";
+import { plural } from "@/shared/lib/text";
 import { ShieldCheckIcon } from "@/shared/ui/icons";
 
-import { formatDate } from "@/shared/lib/dates";
-import { summarize } from "@/features/shifts/lib/schedule";
-import type { NewShiftInput } from "@/contracts/shifts/schemas";
-import type { CancellationReason, ShiftDTO } from "@/contracts/shifts/types";
 import { PostShiftDialog } from "../components/post-shift-dialog";
-import { ReopenShiftDialog, type ReopenTarget } from "../components/reopen-shift-dialog";
+import { ReopenShiftDialog } from "../components/reopen-shift-dialog";
 import { ShiftsTable } from "../components/shifts-table";
-import { StatusTabs, type StatusTab, type TabKey } from "../components/status-tabs";
+import { StatusTabs } from "../components/status-tabs";
 import { SummaryCards } from "../components/summary-cards";
-import { agencyBoardQuery } from "../queries/agency-board-query";
+import { useShiftBoard } from "../hooks/use-shift-board";
 
 type ShiftBoardProps = {
   userId: string;
@@ -24,56 +16,25 @@ type ShiftBoardProps = {
 };
 
 export function ShiftBoard({ userId, agencyName }: ShiftBoardProps) {
-  const queryClient = useQueryClient();
-  const { data: shifts } = useSuspenseQuery(agencyBoardQuery(userId));
-  const [postOpen, setPostOpen] = useState(false);
-  const [tab, setTab] = useState<TabKey>("all");
-  const [notice, setNotice] = useState<string | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<ReopenTarget | null>(null);
-  const postButtonRef = useRef<HTMLButtonElement>(null);
-
-  const summary = summarize(shifts);
-  const tabs: StatusTab[] = [
-    { key: "all", label: "All shifts", count: shifts.length },
-    { key: "open", label: "Open", count: summary.open },
-    { key: "filled", label: "Filled", count: summary.filled },
-  ];
-  const activeTab = tabs.some((item) => item.key === tab) ? tab : "all";
-  const visible = shifts.filter((shift) => activeTab === "all" || shift.status === activeTab);
-
-  const post = useMutation({
-    mutationFn: (input: NewShiftInput) =>
-      apiFetch<ShiftDTO>("/api/shifts", { method: "POST", body: JSON.stringify(input) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.agencyBoard(userId) }),
-  });
-
-  const cancel = useMutation({
-    mutationFn: ({ shift, reason }: { shift: ReopenTarget; reason: CancellationReason }) =>
-      apiFetch<ShiftDTO>(`/api/shifts/${shift.id}/cancel`, {
-        method: "POST",
-        body: JSON.stringify({ reason }),
-      }),
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.agencyBoard(userId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.timesheets(userId) }),
-      ]),
-  });
-
-  async function postShift(input: NewShiftInput) {
-    await post.mutateAsync(input);
-    setTab("all");
-    setNotice("Shift posted");
-  }
-
-  async function cancelAssignment(shift: ReopenTarget, reason: CancellationReason) {
-    setNotice(null);
-    await cancel.mutateAsync({ shift, reason });
-    const prefix = reason === "no-show" ? "No-show reported" : "Assignment cancelled";
-    setNotice(
-      `${prefix}: ${shift.nurseName ?? "The nurse"} was unassigned from the ${shift.role} shift on ${formatDate(shift.date)}. The shift is open again.`,
-    );
-  }
+  const {
+    shifts,
+    summary,
+    tab,
+    setTab,
+    tabs,
+    visible,
+    notice,
+    dismissNotice,
+    postOpen,
+    postButtonRef,
+    openPostDialog,
+    closePostDialog,
+    postShift,
+    cancelTarget,
+    startCancel,
+    closeCancelDialog,
+    cancelAssignment,
+  } = useShiftBoard(userId, agencyName);
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,10 +55,7 @@ export function ShiftBoard({ userId, agencyName }: ShiftBoardProps) {
             ref={postButtonRef}
             type="button"
             data-testid="agency-post-shift-button"
-            onClick={() => {
-              setNotice(null);
-              setPostOpen(true);
-            }}
+            onClick={openPostDialog}
             className="h-11 rounded-control bg-brand-800 px-5 font-medium text-on-brand hover:bg-brand-900"
           >
             Post a shift
@@ -114,7 +72,7 @@ export function ShiftBoard({ userId, agencyName }: ShiftBoardProps) {
           {notice}
           <button
             type="button"
-            onClick={() => setNotice(null)}
+            onClick={dismissNotice}
             className="h-11 rounded-control px-3 hover:bg-success-text/10"
           >
             Dismiss
@@ -135,23 +93,20 @@ export function ShiftBoard({ userId, agencyName }: ShiftBoardProps) {
           <p className="mt-1 text-text-muted">Every shift your agency has posted</p>
         </div>
 
-        <StatusTabs tabs={tabs} active={activeTab} onSelect={setTab} />
+        <StatusTabs tabs={tabs} active={tab} onSelect={setTab} />
 
-        <div id="shift-panel" role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
+        <div id="shift-panel" role="tabpanel" aria-labelledby={`tab-${tab}`}>
           <ShiftsTable
             shifts={visible}
             agencyName={agencyName}
             emptyMessage={shifts.length === 0 ? "No shifts posted yet." : "No shifts match these filters."}
-            onCancel={(shift) => {
-              setNotice(null);
-              setCancelTarget({ ...shift, agencyName });
-            }}
+            onCancel={startCancel}
           />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-4 text-sm text-text-muted sm:px-6">
           <p>
-            Showing {visible.length} {visible.length === 1 ? "shift" : "shifts"}
+            Showing {plural(visible.length, "shift")}
           </p>
           <p>Facility-local time</p>
         </div>
@@ -172,17 +127,14 @@ export function ShiftBoard({ userId, agencyName }: ShiftBoardProps) {
       <PostShiftDialog
         open={postOpen}
         agencyName={agencyName}
-        onClose={() => {
-          setPostOpen(false);
-          postButtonRef.current?.focus();
-        }}
+        onClose={closePostDialog}
         onPost={postShift}
       />
 
       <ReopenShiftDialog
         mode="agency"
         shift={cancelTarget}
-        onClose={() => setCancelTarget(null)}
+        onClose={closeCancelDialog}
         onConfirm={cancelAssignment}
       />
     </div>

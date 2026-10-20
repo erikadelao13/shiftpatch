@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
-
 import { CloseIcon } from "@/shared/ui/icons";
 
-import { newShiftSchema, toFieldErrors, type NewShiftErrors, type NewShiftInput } from "@/contracts/shifts/schemas";
+import type { NewShiftInput } from "@/contracts/shifts/schemas";
 import { SHIFT_ROLES } from "@/contracts/shifts/types";
+import { usePostShiftDialog } from "../hooks/use-post-shift-dialog";
 
 type PostShiftDialogProps = {
   open: boolean;
@@ -18,66 +17,26 @@ const fieldClass =
   "h-11 w-full rounded-control border border-input-border bg-surface px-3 text-base aria-[invalid=true]:border-danger-text";
 
 export function PostShiftDialog({ open, agencyName, onClose, onPost }: PostShiftDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const [errors, setErrors] = useState<NewShiftErrors>({});
-  const [formKey, setFormKey] = useState(0);
-  const [pending, setPending] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
-
-  function handleClose() {
-    setErrors({});
-    setFormError(null);
-    setFormKey((key) => key + 1);
-    onClose();
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending) return;
-    const data = new FormData(event.currentTarget);
-    const parsed = newShiftSchema.safeParse({
-      role: data.get("role"),
-      date: data.get("date"),
-      startTime: data.get("startTime"),
-      endTime: data.get("endTime"),
-    });
-    if (!parsed.success) {
-      setErrors(toFieldErrors(parsed.error));
-      setFormError(null);
-      return;
-    }
-
-    setErrors({});
-    setFormError(null);
-    setPending(true);
-    try {
-      await onPost(parsed.data);
-      dialogRef.current?.close();
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Could not post the shift.");
-    } finally {
-      setPending(false);
-    }
-  }
+  const {
+    dialogRef,
+    close,
+    preventCancelWhileLocked,
+    closeOnBackdrop,
+    errors,
+    formKey,
+    pending,
+    formError,
+    handleClose,
+    handleSubmit,
+  } = usePostShiftDialog({ open, onClose, onPost });
 
   return (
     <dialog
       ref={dialogRef}
       aria-labelledby="post-shift-title"
       onClose={handleClose}
-      onCancel={(event) => {
-        if (pending) event.preventDefault();
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget && !pending) dialogRef.current?.close();
-      }}
+      onCancel={preventCancelWhileLocked}
+      onClick={closeOnBackdrop}
       className="m-0 ml-auto h-dvh max-h-none w-full max-w-md bg-surface text-text shadow-[0_16px_48px_rgb(20_62_50/14%)] backdrop:bg-brand-900/40"
     >
       <form
@@ -98,7 +57,7 @@ export function PostShiftDialog({ open, agencyName, onClose, onPost }: PostShift
               type="button"
               aria-label="Close"
               disabled={pending}
-              onClick={() => dialogRef.current?.close()}
+              onClick={close}
               className="-mr-2 -mt-2 flex size-11 shrink-0 items-center justify-center rounded-control hover:bg-surface-subtle"
             >
               <CloseIcon />
@@ -214,7 +173,7 @@ export function PostShiftDialog({ open, agencyName, onClose, onPost }: PostShift
           <button
             type="button"
             disabled={pending}
-            onClick={() => dialogRef.current?.close()}
+            onClick={close}
             className="h-11 rounded-control border border-brand-800 bg-surface px-5 font-medium text-brand-800 hover:bg-surface-subtle"
           >
             Cancel

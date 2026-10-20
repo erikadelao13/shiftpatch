@@ -1,10 +1,5 @@
-import type { KeyboardEvent } from "react";
-
-import type { ShiftStatus } from "@/contracts/shifts/types";
-
-export type TabKey = "all" | ShiftStatus;
-
-export type StatusTab = { key: TabKey; label: string; count: number };
+import type { StatusTab, TabKey } from "../lib/filters";
+import { useArrowKeyTabs } from "../hooks/use-arrow-key-tabs";
 
 type StatusTabsProps = {
   tabs: readonly StatusTab[];
@@ -13,15 +8,7 @@ type StatusTabsProps = {
 };
 
 export function StatusTabs({ tabs, active, onSelect }: StatusTabsProps) {
-  function moveTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const step = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-    if (!step) return;
-    event.preventDefault();
-    const target = tabs[(index + step + tabs.length) % tabs.length];
-    if (!target) return;
-    onSelect(target.key);
-    document.getElementById(`tab-${target.key}`)?.focus();
-  }
+  const moveTab = useArrowKeyTabs(tabs, onSelect);
 
   return (
     <div role="tablist" aria-label="Shift status" className="mt-4 flex gap-6 overflow-x-auto border-b border-border px-5 sm:px-6">

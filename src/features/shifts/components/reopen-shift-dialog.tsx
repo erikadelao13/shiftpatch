@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
 import { CloseIcon, InfoIcon } from "@/shared/ui/icons";
 
 import { formatDate } from "@/shared/lib/dates";
 import { formatTimeRange } from "@/features/shifts/lib/schedule";
-import { CANCELLATION_REASONS, type AgencyShift, type CancellationReason } from "@/contracts/shifts/types";
-
-export type ReopenMode = "nurse" | "agency";
-
-export type ReopenTarget = Pick<AgencyShift, "id" | "role" | "date" | "startTime" | "endTime"> & {
-  agencyName: string;
-  nurseName: string | null;
-};
+import { CANCELLATION_REASONS, type CancellationReason } from "@/contracts/shifts/types";
+import {
+  NURSE_COPY,
+  REASON_COPY,
+  REASON_LABELS,
+  type ReopenMode,
+  type ReopenTarget,
+} from "../lib/reopen";
+import { useReopenShiftDialog } from "../hooks/use-reopen-shift-dialog";
 
 type ReopenShiftDialogProps = {
   mode: ReopenMode;
@@ -22,73 +21,26 @@ type ReopenShiftDialogProps = {
   onConfirm: (shift: ReopenTarget, reason: CancellationReason) => Promise<void>;
 };
 
-const REASON_LABELS: Record<CancellationReason, string> = {
-  advance: "In advance",
-  "no-show": "No-show",
-};
-
-const REASON_COPY = {
-  advance: {
-    description: (nurse: string) => `Confirm that ${nurse} is being removed from this shift in advance.`,
-    confirm: "Cancel assignment",
-    confirming: "Cancelling…",
-    failure: "Could not cancel this assignment.",
-  },
-  "no-show": {
-    description: (nurse: string) => `Confirm that ${nurse} did not attend this shift.`,
-    confirm: "Report no-show",
-    confirming: "Reporting…",
-    failure: "Could not report the no-show.",
-  },
-} as const;
-
-const NURSE_COPY = {
-  title: "Cancel this assignment?",
-  description: "You’ll be removed from this shift so another nurse can claim it.",
-  consequence: "The shift will reopen as available.",
-  keep: "Keep assignment",
-} as const;
-
 export function ReopenShiftDialog({ mode, shift, onClose, onConfirm }: ReopenShiftDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [agencyReason, setAgencyReason] = useState<CancellationReason>("advance");
-  const reason = mode === "agency" ? agencyReason : "advance";
+  const {
+    dialogRef,
+    close,
+    preventCancelWhileLocked,
+    closeOnBackdrop,
+    pending,
+    error,
+    reason,
+    agencyReason,
+    setAgencyReason,
+    handleClose,
+    handleConfirm,
+  } = useReopenShiftDialog({ mode, shift, onClose, onConfirm });
   const copy = REASON_COPY[reason];
   const nurse = shift?.nurseName ?? "The nurse";
-  const open = shift !== null;
   const title = mode === "agency" ? `Cancel ${nurse}’s assignment?` : NURSE_COPY.title;
   const description = mode === "agency" ? copy.description(nurse) : NURSE_COPY.description;
   const consequence =
     mode === "agency" ? `${nurse} will be unassigned and the shift will reopen.` : NURSE_COPY.consequence;
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
-
-  function handleClose() {
-    setError(null);
-    setAgencyReason("advance");
-    onClose();
-  }
-
-  async function handleConfirm() {
-    if (!shift || pending) return;
-    setError(null);
-    setPending(true);
-    try {
-      await onConfirm(shift, reason);
-      dialogRef.current?.close();
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : copy.failure);
-    } finally {
-      setPending(false);
-    }
-  }
 
   return (
     <dialog
@@ -96,12 +48,8 @@ export function ReopenShiftDialog({ mode, shift, onClose, onConfirm }: ReopenShi
       aria-labelledby="reopen-shift-title"
       aria-describedby="reopen-shift-description"
       onClose={handleClose}
-      onCancel={(event) => {
-        if (pending) event.preventDefault();
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget && !pending) dialogRef.current?.close();
-      }}
+      onCancel={preventCancelWhileLocked}
+      onClick={closeOnBackdrop}
       className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-card bg-surface p-0 text-text shadow-[0_16px_48px_rgb(20_62_50/14%)] backdrop:bg-brand-900/40"
     >
       {shift ? (
@@ -119,7 +67,7 @@ export function ReopenShiftDialog({ mode, shift, onClose, onConfirm }: ReopenShi
               type="button"
               aria-label="Close"
               disabled={pending}
-              onClick={() => dialogRef.current?.close()}
+              onClick={close}
               className="-mr-2 -mt-2 flex size-11 shrink-0 items-center justify-center rounded-control hover:bg-surface-subtle disabled:opacity-60"
             >
               <CloseIcon />
@@ -201,7 +149,7 @@ export function ReopenShiftDialog({ mode, shift, onClose, onConfirm }: ReopenShi
             <button
               type="button"
               disabled={pending}
-              onClick={() => dialogRef.current?.close()}
+              onClick={close}
               className="h-12 rounded-control sm:flex-1 border border-brand-800 bg-surface px-5 font-medium text-brand-800 hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-60"
             >
               {mode === "agency" ? "Go back" : NURSE_COPY.keep}
