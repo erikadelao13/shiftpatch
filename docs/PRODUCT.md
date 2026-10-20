@@ -1,8 +1,8 @@
 # ShiftPatch Product Definition
 
-> Status: MVP requirements and acceptance criteria. Implementation and validation are pending.
+> Status: MVP requirements and acceptance criteria. Every capability in §4 is implemented and deployed; the production smoke check last passed on 2026-10-18 ([VERIFICATION.md](VERIFICATION.md)).
 >
-> Updated: October 16, 2026.
+> Updated: October 19, 2026.
 >
 > Scope: application behavior and user experience for the Product Engineer assessment.
 
@@ -169,15 +169,7 @@ One shift has at most one active nurse assignment. Simultaneous claim attempts m
 
 ### Cancellation permissions: proposed assumptions
 
-The packet does not fully define cancellation permissions. Use this policy consistently with `ARCHITECTURE.md` unless the recruiter clarifies otherwise:
-
-| Actor | Advance cancellation | Record no-show |
-| --- | --- | --- |
-| Nurse | Own active claim | No |
-| Agency | Active claim on its own shift | Its own filled shift |
-| Admin | Any active claim | Any filled shift |
-
-Nurses may upload their own credentials. The administrator reads the cross-agency audit log. Timesheet visibility follows the user's own assignments, own agency, or administrator-wide view.
+The packet does not fully define cancellation permissions. The policy for cancellation and every other role permission (credential upload, the audit log, timesheet visibility) is the table in [../ARCHITECTURE.md](../ARCHITECTURE.md) §7 "Proposed permission policy". Use it unless the recruiter clarifies otherwise.
 
 ### Timesheets
 
@@ -187,7 +179,7 @@ Nurses may upload their own credentials. The administrator reads the cross-agenc
 - Retain historical assignment context after cancellation or reassignment.
 - Hours entry, approval, payroll, and billing are outside the committed lightweight view.
 
-> Note (2026-10-18): the owner decided against a `Timesheet` table and a timesheets API. The view is derived from shifts and cancellations. Its submission state shows as "Not recorded" because nothing can be submitted, and cancelled and no-show assignments are listed as history rows that are not counted in scheduled totals. See [decisions](decisions.md) and ARCHITECTURE §9.
+> Note (2026-10-18, owner decision): nothing records worked hours. The view is derived from shifts and cancellations. Its submission state shows as "Not recorded" because nothing can be submitted, and cancelled and no-show assignments are listed as history rows that are not counted in scheduled totals. See [decisions](decisions.md) and ARCHITECTURE §9.
 
 ## 8. Product acceptance criteria
 
@@ -213,25 +205,7 @@ The API's exact request/response shapes, status codes, and error messages remain
 
 ## 9. Required test IDs
 
-| Test ID | Product interaction |
-| --- | --- |
-| login-email-input | Enter the login email |
-| login-password-input | Enter the password |
-| login-submit-button | Submit login |
-| shift-list-item | Inspect a shift in the open-shifts list |
-| shift-claim-button | Claim that shift |
-| shift-cancel-button | Cancel a claimed shift |
-| credential-upload-input | Select a credential document |
-| credential-expiry-date-input | Set its expiry date |
-| agency-post-shift-button | Open the posting form |
-| agency-post-shift-submit-button | Submit the new shift |
-| admin-dashboard-shift-table | Inspect cross-agency coverage |
-| admin-shift-status-badge | Read each row's current status |
-| audit-log-table | Inspect event history |
-| timesheet-table | Inspect assignments and recorded-work state |
-| notification-banner | Read success or error feedback; distinguish by content |
-
-Test IDs supplement accessible labels and semantics. Do not place them on hidden placeholders.
+The supplied technical spec defines the 15 test IDs. [../ARCHITECTURE.md](../ARCHITECTURE.md) §10 lists each one with the element it belongs to. Test IDs supplement accessible labels and semantics; never place them on hidden placeholders.
 
 ## 10. Sample data and demonstration
 
@@ -263,7 +237,7 @@ Demonstrate: agency posts a shift; Maria claims it; admin sees coverage; an auth
 - Support keyboard interaction, visible focus, labeled inputs, semantic tables, and readable status text.
 - Preserve form input after recoverable errors.
 - Prevent repeated submission while a request is pending.
-- Refresh relevant views after successful changes and when returning to an active workspace.
+- Refresh relevant views after successful changes and when returning to an active workspace. Implemented: every view refreshes after its own changes; only the admin views also refresh when their tab becomes visible again ([decisions](decisions.md), 2026-10-18).
 - Keep documents private and show only information the user's role permits.
 - Present an honest empty state rather than fabricated example activity.
 

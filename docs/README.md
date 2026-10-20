@@ -5,8 +5,8 @@ Entry point for agents and contributors: [AGENTS.md](../AGENTS.md).
 | Document | Contains | Status |
 | --- | --- | --- |
 | [PRODUCT.md](PRODUCT.md) | Purpose, users, workflows, scope | Current |
-| [../ARCHITECTURE.md](../ARCHITECTURE.md) | Implemented baseline and separately labeled target | Partial — database foundation and authentication implemented; the rest is a labeled target |
-| [DESIGN.md](DESIGN.md) | Visual direction, tokens, states, accessibility | Current — sign-in screen implemented |
+| [../ARCHITECTURE.md](../ARCHITECTURE.md) | Implemented baseline, remaining proposals labeled inline | Current |
+| [DESIGN.md](DESIGN.md) | Visual direction, tokens, states, accessibility | Current — every role's screens implemented |
 | [VERIFICATION.md](VERIFICATION.md) | Commands, what each proves, change matrix, limits | Current |
 | [PLANS.md](PLANS.md) | When a plan is required, template, lifecycle | Current |
 | [HOOKS.md](HOOKS.md) | Git hooks, the Claude Code adapter, bounds, activation | Current |

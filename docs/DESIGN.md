@@ -1,6 +1,6 @@
 # ShiftPatch Design System
 
-Status: implementation reference for the approved authentication and agency dashboard mockups.
+Status: implementation reference. The authentication and agency dashboard mockups set the visual system; the nurse, credentials, admin, audit log and timesheet screens follow it, and §7 records each one as implemented.
 
 ## 1. Product and visual direction
 
@@ -186,7 +186,7 @@ Display the following in order:
 8. Pale sage trust panel with shield icon and “Built around trusted care”.
 9. Access help: “Need access? Contact your administrator” with a functioning destination if presented as a link.
 
-**Implemented (2026-10-17).** The screen is built in the app, in `src/app/login/page.tsx` and `src/features/auth/components/login-form.tsx`. Do not expose links the sign-in flow cannot honor, to imitate the mockup:
+**Implemented (2026-10-17).** The screen is built in the app, in `src/app/login/page.tsx` and `src/features/auth/views/login-form.tsx`. Do not expose links the sign-in flow cannot honor, to imitate the mockup:
 
 - There is no password recovery link and no "remember me" checkbox, because the flow supports neither. Registration and recovery are out of scope.
 - "Need access? Contact your administrator" is plain text: there is no destination to link to.
@@ -278,7 +278,7 @@ This is supporting information, not the enforcement mechanism. Claim eligibility
 
 Display the timezone explicitly near the table. Use the configured facility or schedule timezone; the mockup’s Eastern Time label is illustrative. Do not silently reinterpret shift times using the viewer’s device timezone.
 
-**Implemented (2026-10-17).** The agency overview is built in `src/app/(workspace)/agency/` and `src/features/shifts/`, with the post-a-shift side panel. It is data-backed: the page is a Server Component that reads the agency's shifts from the database, and posting calls `POST /api/shifts`, so a posted shift survives a reload. The status tabs are All, Open and Filled; there is no Cancelled tab or badge, because status is `open | filled`. The panel is headed "Your shifts" with "Every shift your agency has posted", since it has no date scope. The empty state and the Coverage note read "No shifts posted yet."
+**Implemented (2026-10-17).** The agency overview is built in `src/app/(workspace)/agency/` and `src/features/shifts/`, with the post-a-shift side panel. It is data-backed: the page's Server Component reads the agency's shifts from the database and seeds the browser's query cache (since 2026-10-19), and posting calls `POST /api/shifts`, so a posted shift survives a reload. The status tabs are All, Open and Filled; there is no Cancelled tab or badge, because status is `open | filled`. The panel is headed "Your shifts" with "Every shift your agency has posted", since it has no date scope. The empty state and the Coverage note read "No shifts posted yet."
 
 Posting states:
 
@@ -308,7 +308,7 @@ Omitted because they have no working destination yet: the Shifts, Nurse roster a
 - **Upload a credential** ("Add a new document or replace your current one."). A dashed drop zone takes a dragged file or "Choose file". The real `<input type="file" data-testid="credential-upload-input">` is visually hidden but focusable and labelled "Credential document", and the "Choose file" label shows its focus ring. Once a file is chosen, the zone shows its name and size, and the button reads "Choose a different file". "Expiry date" is a native date input with `credential-expiry-date-input`, `min` set to today and the hint "Use the expiry date printed on your document." A lock note says "Your document is stored privately." and that expiry checks use the nurse's date without verifying the document. "Save credential" is full width.
 - **Current credential.** A status pill ("Valid", "Expired" or "Not on file"), the expiry date, "Document", which shows "No document uploaded", or the file name, its size, "Uploaded <date>" and a "View document" link that downloads the nurse's own file; a line that depends on the state (with a document: "Uploading a new document replaces this one."), and the sage "Before you claim a shift" panel.
 
-States: a file is checked as soon as it is chosen ("Choose a PDF, JPG or PNG file.", "Choose a file of 4 MB or less.", or "This file is empty."). Saving with a field missing shows each field's message, focuses the first invalid field, and sends nothing. While a save is pending, every control is disabled and the button reads "Saving…". A failure shows the server's message in a `role="alert"` `notification-banner` above the button and keeps the file and date. A success refreshes the page, clears the form, and reads "Credential saved. Your expiry date is now <date>." in a `role="status"` banner. A date before today is rejected before sending with "Expiry date must be today or later."; "today" comes from the server, not the device clock. Leaving the page clears the success banner, so a returning nurse never sees an old "Credential saved" (Activity keeps the page mounted; the form resets its notice in a `useLayoutEffect` cleanup).
+States: a file is checked as soon as it is chosen ("Choose a PDF, JPG or PNG file.", "Choose a file of 4 MB or less.", or "This file is empty."). Saving with a field missing shows each field's message, focuses the first invalid field, and sends nothing. While a save is pending, every control is disabled and the button reads "Saving…". A failure shows the server's message in a `role="alert"` `notification-banner` above the button and keeps the file and date. A success refetches the credential record, clears the form, and reads "Credential saved. Your expiry date is now <date>." in a `role="status"` banner. A date before today is rejected before sending with "Expiry date must be today or later."; "today" comes from the server, not the device clock. Leaving the page clears the success banner, so a returning nurse never sees an old "Credential saved" (Activity keeps the page mounted; the form resets its notice in a `useLayoutEffect` cleanup).
 
 Deviations from the mockup: the size limit reads 4 MB, not 5 MB (ARCHITECTURE §9). The banner has no right-hand "Valid" pill, because the shared banner's title already names the state and the card repeats it. The footer "Only you and authorized users can access your document." is omitted, because nothing defines who besides the nurse may read the document. After a client navigation, Next.js keeps the previous page mounted but hidden (`<Activity>`), so the marketplace's `credential-status` banner is still in the DOM on this page. Scope e2e locators to visible elements.
 
@@ -408,7 +408,7 @@ Do not add empty charts or placeholder side panels to occupy unused space.
 ## 13. Implementation guidance
 
 - Define tokens centrally and consume them through shared component styles or the project’s existing styling system.
-- Reuse components such as AppShell, Sidebar, PageHeader, StatCard, ShiftTable, ShiftCard, StatusBadge, FormField, EmptyState, and ConfirmDialog.
+- Reuse the existing primitives before adding new ones: `Sidebar`, `SidebarNav`, `StatCard`, `RefreshError` (`src/shared/ui/`) and `StatusBadge`, `StatusTabs`, `FilterSelect` (`src/features/shifts/components/`). AppShell, PageHeader, ShiftCard, FormField, EmptyState and ConfirmDialog are proposed names; none exists yet.
 - Keep feature-specific content within its feature; keep visual primitives reusable.
 - The sign-in screen is self-built and follows §6; there is no third-party authentication UI to restyle.
 - Preserve every required UI test ID exactly as specified by the challenge. This document introduces no replacement test IDs.

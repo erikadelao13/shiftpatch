@@ -1,10 +1,10 @@
 # ShiftPatch Architecture
 
-> Status: proposed application architecture. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). the timesheet views for all three roles, derived from `Shift` and `Cancellation` with no recorded work (§5, §9). A `Timesheet` model was decided against on 2026-10-18. Browser server-state moved to TanStack Query on 2026-10-19 (§2, §4), which added six view-shaped GET routes (§7), including `GET /api/timesheets`. CI on GitHub Actions and the Vercel deployment at <https://shiftpatch-tau.vercel.app> (§11, §12).
+> Status: implemented baseline, with remaining proposals labeled where they appear. Implemented so far: the Neon database foundation, authentication (§7, §12), shift listing and posting (§3, §5, §6), claiming a shift with credential expiry and audit (§3, §5, §6, §8), cancelling a filled shift or recording a no-show (§3, §5, §6, §8), and the admin shift overview (§3, §4). credential upload with an expiry date, a private document stored in Postgres and an audit event (§5, §6, §9). the admin audit log, which lists the newest 50 `AuditEvent` rows and now audits shift posts (§5, §9). the timesheet views for all three roles, derived from `Shift` and `Cancellation` with no recorded work (§5, §9). A `Timesheet` model was decided against on 2026-10-18. Browser server-state moved to TanStack Query on 2026-10-19 (§2, §4), which added six view-shaped GET routes (§7), including `GET /api/timesheets`. CI on GitHub Actions and the Vercel deployment at <https://shiftpatch-tau.vercel.app> (§11, §12).
 >
 > Scope: the Product Engineer trial brief, `ShiftPatch-Technical-Spec.md`, and the scope committed to the recruiter.
 >
-> Reviewed: October 16, 2026.
+> Reviewed: October 19, 2026.
 
 ## 1. Purpose and constraints
 
@@ -22,14 +22,14 @@ This is a design for the assessment, not evidence of production healthcare compl
 | --- | --- | --- |
 | Application | Next.js App Router with TypeScript | One codebase and deployment for the React UI and required HTTP API |
 | HTTP API | Route Handlers under `src/app/api`, Node.js runtime | Preserve the exact externally tested routes |
-| Code organization | `src/features/` (frontend only, split into `views/`, `components/`, `hooks/` and `lib/`), `src/server/`, `src/contracts/`, `src/actions/`, `src/shared/` | The frontend cannot import server code, and ESLint enforces it (§3) |
+| Code organization | `src/features/` (frontend only, split into `views/`, `components/`, `hooks/`, `queries/` and `lib/`), `src/server/`, `src/contracts/`, `src/actions/`, `src/shared/` | The frontend cannot import server code, and ESLint enforces it (§3) |
 | Styling | Tailwind CSS with reusable accessible primitives | Consistent UI with limited setup |
 | Client server-state | **Implemented (2026-10-19):** TanStack Query (`@tanstack/react-query` 5.x). Each page's Server Component fetches its query on the server and seeds the browser cache through `<HydrationBoundary>`; views read it with `useSuspenseQuery` and write with `useMutation`, which invalidates the affected keys. `apiFetch` is the transport inside every `queryFn` and `mutationFn`. Defaults: `staleTime` 30 s, no retry, no focus or reconnect refetch and no interval. Admin queries refetch when the tab returns to visible; the Refresh buttons call `refetch()`. No optimistic updates | Request lifecycle, mutation state, and query invalidation across views that share shift data |
 | Persistence | Neon Postgres through Prisma | Persistent hosted data, migrations, and transactional writes |
 | Validation | Zod at HTTP boundaries | Validate untrusted input at runtime |
 | Authentication | Self-managed: `node:crypto` scrypt password hashes, HS256 JWTs signed with `jose`, revocable `ApiSession` rows | One token serves both the required email/password-to-token endpoint and the browser, with no second identity provider (§7, `docs/decisions.md`) |
 | Credential files | Postgres, in a separate `CredentialDocument` table (owner decision 2026-10-18); a 4 MB limit | Keeps the document with its expiry in one transaction and needs no storage provider. The bytes never load with the banner or the claim check. Move to object storage before real use (TD-16) |
-| Tests | Vitest; React Testing Library where useful; Playwright | Rules, real database integration, and browser flows |
+| Tests | Vitest and Playwright. React Testing Library is a proposal, not installed (TD-1) | Rules, real database integration, and browser flows |
 | Automation | GitHub Actions and pnpm scripts | Repeatable checks locally and in CI |
 | Hosting | Vercel | Deploy the existing Next.js application |
 
@@ -209,7 +209,7 @@ Each feature owns its views, components and UI helpers. Its input schemas and pu
 | --- | --- |
 | Dialog open state, selected cancellation reason, form fields | Local React state |
 | Agency board, nurse marketplace, admin board, credential record | TanStack Query cache, seeded by the page's Server Component and invalidated by the mutations that affect it |
-| Application user profile | Feature query hooks |
+| Application user profile | Read by each page and layout on the server (`requireRole`) and passed down as props |
 | Audit rows, timesheet entries | TanStack Query cache, seeded by the page and refetched by the Refresh button (admin pages also on tab return) |
 | Roles, ownership, expiry, shift assignment | Server and database |
 | Browser sign-in/session lifecycle | The `shiftpatch_session` HttpOnly cookie, set by the `signIn` Server Action; the `ApiSession` row on the server |
@@ -358,12 +358,12 @@ Every protected Route Handler calls `requireActor(request)` (or `requireSession(
 
 `src/proxy.ts` makes optimistic redirects from the cookie's signature and expiry only, with no database call: `/` goes to the user's workspace or `/login`; `/nurse`, `/agency` and `/admin` without a valid cookie go to `/login`; a user on another role's workspace is redirected to their own. The proxy never redirects `/login`, because a signature-only check would loop when a revoked session still carries a valid signature. Instead the login page itself resolves the session against the database, behind `<Suspense>`, and redirects to the workspace only when the session is live; a revoked or expired session stays on the form. Each workspace page does the authoritative check: `getCurrentUser()` (cookie, then database, otherwise `redirect('/login')`) or `requireRole(role)`, inside `<Suspense>`.
 
-### Supporting routes (proposals, not in the spec)
+### Supporting routes (not in the spec)
 
 | Route | Behavior |
 | --- | --- |
-| `GET /api/auth/me` | `200 { user: { id, name, role, agencyId } }` for a valid caller |
-| `POST /api/auth/logout` | Revokes the caller's session and returns `204`. Clears the cookie when the request was cookie-authenticated |
+| `GET /api/auth/me` | Agent proposal. `200 { user: { id, name, role, agencyId } }` for a valid caller |
+| `POST /api/auth/logout` | Agent proposal. Revokes the caller's session and returns `204`. Clears the cookie when the request was cookie-authenticated |
 | `GET /api/agency/board` | Agency only, from the session's own agency. `200 { shifts: AgencyShift[] }`; `403` for another role or an account with no agency |
 | `GET /api/nurse/marketplace` | Nurse only. `200 { openShifts, myShifts }` |
 | `GET /api/admin/board` | Admin only. `200 { agencies, shifts }` |
@@ -371,7 +371,7 @@ Every protected Route Handler calls `requireActor(request)` (or `requireSession(
 | `GET /api/timesheets` | Any role, scoped by role (nurse's own, agency's own, all for the admin). `200 { entries }` |
 | `GET /api/credentials` | Nurse only. `200 { status, document }`, with the status computed on the server |
 
-The six GET routes added on 2026-10-19 serve the browser's queries. They send `Cache-Control: no-store`, answer `401` without a session and `403` for the wrong role (`requireActorRole` in `request-auth.ts`), and are thin adapters over the services the pages call. `e2e/views-api.spec.ts` covers them.
+The six GET routes added on 2026-10-19 (owner decision; their details are agent defaults) serve the browser's queries. They send `Cache-Control: no-store`, answer `401` without a session and `403` for the wrong role (`requireActorRole` in `request-auth.ts`), and are thin adapters over the services the pages call. `e2e/views-api.spec.ts` covers them.
 
 Server-side authorization remains mandatory even after authentication and page/layout checks [N2].
 
@@ -382,7 +382,7 @@ These rules fill gaps in the packet and must be recorded as assumptions:
 | Operation | Nurse | Agency | Admin |
 | --- | --- | --- | --- |
 | Read marketplace shifts | Yes | Yes | Yes |
-| Create a shift | No | Own agency | No additional capability required |
+| Create a shift | No | Own agency | No (agent default, 2026-10-17: `403`) |
 | Claim a shift | Self, valid expiry | No | No |
 | Cancel in advance | Own claim | Own agency's filled shift | Any filled shift |
 | Record no-show | No | Own agency's filled shift | Any filled shift |
@@ -442,7 +442,7 @@ The route contract is an agent proposal. The owner decided on 2026-10-18 that do
 
 Record actual successful business events, with actor, resource, action, and timestamp. Never log passwords, Bearer tokens, raw documents, or connection strings. Serve a recent, bounded admin view; clients cannot submit fabricated audit entries.
 
-**Implemented (2026-10-18):** `createShift` writes the shift and one `shift_posted` event in one transaction; a refused post writes neither. `/admin/audit` authorizes with `requireRole("admin")` and calls `listAuditEntries`, which reads the newest 50 rows (`createdAt` then `id`, descending), the total count and the names of cancelled shifts' previous nurses, and maps them with `toAuditEntry`. Each action's metadata is parsed strictly, so a malformed row fails the page through `admin/audit/error.tsx` rather than disappearing. There is no audit API route, filter, paging past 50, export or retention, and only successful claim, cancel, post and credential events are recorded. `tests/integration/audit.test.ts` proves every writer's metadata parses and the 50-row bound.
+**Implemented (2026-10-18):** `createShift` writes the shift and one `shift_posted` event in one transaction; a refused post writes neither. `/admin/audit` authorizes with `requireRole("admin")` and calls `listAuditEntries`, which reads the newest 50 rows (`createdAt` then `id`, descending), the total count and the names of cancelled shifts' previous nurses, and maps them with `toAuditEntry`. Each action's metadata is parsed strictly, so a malformed row fails the page through `admin/audit/error.tsx` rather than disappearing. Since 2026-10-19 `GET /api/audit` serves the same entries to the browser's query. There is no filter, paging past 50, export or retention, and only successful claim, cancel, post and credential events are recorded. `tests/integration/audit.test.ts` proves every writer's metadata parses and the 50-row bound.
 
 ### Timesheets
 
@@ -494,19 +494,7 @@ Browser tests mutate data. Each spec deletes only the rows it created (`e2e/supp
 
 ### Commands
 
-Available scripts:
-
-```bash
-pnpm check:docs
-pnpm lint
-pnpm typecheck       # needs a prior build for the generated route types
-pnpm test            # Vitest: unit and integration (dev branch)
-pnpm test:e2e        # Playwright (starts `pnpm dev`)
-pnpm build
-pnpm verify          # check:docs, lint, build, typecheck, test, test:e2e; fails fast
-```
-
-Database scripts: `pnpm db:migrate` and `pnpm db:seed` (dev branch only; both refuse otherwise) and, for the `production` branch, `pnpm db:deploy` (requires an explicit `NODE_ENV=production`) and `pnpm db:seed:production` (§12). Use the same scripts locally and in CI; no success masking, skipped assertions, or disabled rules to produce green output.
+[docs/VERIFICATION.md](docs/VERIFICATION.md) is the canonical list of commands, what each proves, and which change needs which. Use the same scripts locally and in CI; no success masking, skipped assertions, or disabled rules to produce green output.
 
 **Implemented (2026-10-18): CI.** `.github/workflows/ci.yml` runs on push to `main`, every pull request and `workflow_dispatch`, on `ubuntu-24.04`, with `permissions: contents: read`, every action pinned to a full commit SHA, and checkout without persisted credentials. Vercel's Deployment Checks match the job names, so keep them stable:
 
@@ -575,8 +563,8 @@ Defer email delivery, bulk inspector exports, PostHog, advanced reporting, push 
 2. Next.js scaffold, database schema/fixtures, first public deployment.
 3. Browser sign-in, direct login, and exact login/listing/posting contracts. Sign-in, listing and posting are implemented (2026-10-17).
 4. Atomic claim/cancel behavior with authorization and integration tests. Claim and cancel are implemented (2026-10-17).
-5. Main role-specific UI with required test IDs.
-6. Functional lightweight credential, audit, and timesheet views.
+5. Main role-specific UI with required test IDs. Implemented (2026-10-17 and 2026-10-18).
+6. Functional lightweight credential, audit, and timesheet views. Implemented (2026-10-18).
 7. CI, browser/security checks, deployed smoke test. CI, the Vercel deployment and the production smoke check are implemented (2026-10-18).
 8. Final deployment validation and documented limitations.
 
