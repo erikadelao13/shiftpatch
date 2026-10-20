@@ -1,11 +1,20 @@
-import { requireActor } from "@/server/auth/request-auth";
+import { requireActor, requireActorRole } from "@/server/auth/request-auth";
 import { MAX_CREDENTIAL_BYTES, credentialUploadSchema } from "@/contracts/credentials/schemas";
-import { saveCredential } from "@/server/credentials/credential-service";
+import { getCredentialData, saveCredential } from "@/server/credentials/credential-service";
 import { HttpError, errorResponse } from "@/server/errors";
 import { assertContentLength, readFormData } from "@/server/http";
 
 const noStore = { "Cache-Control": "no-store" };
 const MULTIPART_OVERHEAD_BYTES = 64 * 1024;
+
+export async function GET(request: Request) {
+  try {
+    const actor = await requireActorRole(request, "nurse", "Only nurses can view credentials");
+    return Response.json(await getCredentialData(actor.id), { headers: noStore });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
 
 export async function POST(request: Request) {
   try {

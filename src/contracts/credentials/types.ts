@@ -14,6 +14,11 @@ export type CredentialDTO = {
   document: CredentialDocumentSummary;
 };
 
+export type CredentialData = {
+  status: CredentialStatus;
+  document: CredentialDocumentSummary | null;
+};
+
 export type CredentialRecord = {
   expiresOn: string | null;
   document: CredentialDocumentSummary | null;
