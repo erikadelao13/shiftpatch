@@ -1,22 +1,9 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLayoutEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
-import { z } from "zod";
-
-import { formatDate } from "@/shared/lib/dates";
-import { apiFetch } from "@/shared/client/api-client";
-import { queryKeys } from "@/shared/client/query-keys";
 import { DocumentIcon, LockIcon, UploadIcon } from "@/shared/ui/icons";
 
-import { PAST_EXPIRY_MESSAGE, formatFileSize } from "@/contracts/credentials/document";
-import {
-  credentialFileSchema,
-  credentialUploadSchema,
-  type CredentialUploadErrors,
-} from "@/contracts/credentials/schemas";
-
-type Notice = { kind: "success" | "error"; message: string };
+import { formatFileSize } from "@/contracts/credentials/document";
+import { useCredentialUpload } from "../hooks/use-credential-upload";
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png";
 
@@ -28,86 +15,23 @@ function describedBy(...ids: (string | false)[]): string | undefined {
 }
 
 export function CredentialUploadForm({ userId, today }: { userId: string; today: string }) {
-  const queryClient = useQueryClient();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const expiryRef = useRef<HTMLInputElement>(null);
-  const [formKey, setFormKey] = useState(0);
-  const [selected, setSelected] = useState<File | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const [errors, setErrors] = useState<CredentialUploadErrors>({});
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const upload = useMutation({
-    mutationFn: (body: FormData) => apiFetch("/api/credentials", { method: "POST", body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.credential(userId) }),
-  });
-  const pending = upload.isPending;
-
-  useLayoutEffect(() => {
-    return () => setNotice(null);
-  }, []);
-
-  function selectFile(file: File | null) {
-    setSelected(file);
-    setNotice(null);
-    const parsed = file ? credentialFileSchema.safeParse(file) : null;
-    setErrors((current) => ({
-      ...current,
-      file: parsed && !parsed.success ? parsed.error.issues[0]?.message : undefined,
-    }));
-  }
-
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setDragging(false);
-    const file = event.dataTransfer.files[0];
-    const input = fileRef.current;
-    if (!file || !input || pending) return;
-    const transfer = new DataTransfer();
-    transfer.items.add(file);
-    input.files = transfer.files;
-    selectFile(file);
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (pending) return;
-    const data = new FormData(event.currentTarget);
-    const parsed = credentialUploadSchema.safeParse({
-      file: data.get("file"),
-      expiresOn: data.get("expiresOn"),
-    });
-    if (!parsed.success) {
-      const { fieldErrors } = z.flattenError(parsed.error);
-      setErrors({ file: fieldErrors.file?.[0], expiresOn: fieldErrors.expiresOn?.[0] });
-      setNotice(null);
-      (fieldErrors.file ? fileRef : expiryRef).current?.focus();
-      return;
-    }
-
-    if (parsed.data.expiresOn < today) {
-      setErrors({ expiresOn: PAST_EXPIRY_MESSAGE });
-      setNotice(null);
-      expiryRef.current?.focus();
-      return;
-    }
-
-    setErrors({});
-    setNotice(null);
-    try {
-      await upload.mutateAsync(data);
-      setFormKey((key) => key + 1);
-      setSelected(null);
-      setNotice({
-        kind: "success",
-        message: `Credential saved. Your expiry date is now ${formatDate(parsed.data.expiresOn)}.`,
-      });
-    } catch (error) {
-      setNotice({
-        kind: "error",
-        message: error instanceof Error ? error.message : "Could not save your credential.",
-      });
-    }
-  }
+  const {
+    inputRef,
+    expiryRef,
+    dragging,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    formKey,
+    selected,
+    errors,
+    notice,
+    pending,
+    selectFile,
+    clearExpiryError,
+    dismissNotice,
+    handleSubmit,
+  } = useCredentialUpload(userId, today);
 
   return (
     <section
@@ -125,11 +49,8 @@ export function CredentialUploadForm({ userId, today }: { userId: string; today:
             Credential document
           </span>
           <div
-            onDragOver={(event) => {
-              event.preventDefault();
-              if (!pending) setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={`flex flex-col items-center gap-3 rounded-card border border-dashed px-4 py-8 text-center transition-colors duration-150 motion-reduce:transition-none ${
               dragging
@@ -154,7 +75,7 @@ export function CredentialUploadForm({ userId, today }: { userId: string; today:
               </>
             )}
             <input
-              ref={fileRef}
+              ref={inputRef}
               id="credential-file"
               name="file"
               type="file"
@@ -206,7 +127,7 @@ export function CredentialUploadForm({ userId, today }: { userId: string; today:
               Boolean(errors.expiresOn) && "credential-expiry-error",
             )}
             disabled={pending}
-            onChange={() => setErrors((current) => ({ ...current, expiresOn: undefined }))}
+            onChange={clearExpiryError}
             className={fieldClass}
           />
           <p id="credential-expiry-hint" className="text-sm text-text-muted">
@@ -243,7 +164,7 @@ export function CredentialUploadForm({ userId, today }: { userId: string; today:
             {notice.message}
             <button
               type="button"
-              onClick={() => setNotice(null)}
+              onClick={dismissNotice}
               className="h-11 shrink-0 rounded-control px-3 hover:bg-black/5"
             >
               Dismiss
