@@ -8,6 +8,7 @@ import {
   NoteIcon,
   UserIcon,
 } from "@/shared/ui/icons";
+import { initialsOf } from "@/shared/lib/text";
 
 import { describeAuditEvent, formatEventTime, type AuditEventIcon } from "@/features/audit/lib/describe-event";
 import type { AuditEntry } from "@/contracts/audit/types";
@@ -25,15 +26,6 @@ const ACTOR_ROLES: Record<Role, { label: string; avatar: string }> = {
   agency: { label: "Agency", avatar: "bg-sage text-brand-800" },
   admin: { label: "Administrator", avatar: "bg-neutral-bg text-neutral-text" },
 };
-
-function initialsOf(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join("");
-}
 
 export function AuditLogTable({ entries }: { entries: readonly AuditEntry[] }) {
   return (

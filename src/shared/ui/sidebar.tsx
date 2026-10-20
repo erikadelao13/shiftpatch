@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { initialsOf } from "@/shared/lib/text";
+
 import { Logo } from "./logo";
 import { SignOutIcon } from "./icons";
 import { SignOutForm } from "./sign-out-form";
@@ -11,15 +13,6 @@ type SidebarProps = {
   nav: ReactNode;
   signOutAction: () => Promise<void>;
 };
-
-function initialsOf(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join("");
-}
 
 export function Sidebar({
   workspaceName,
